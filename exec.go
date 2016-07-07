@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ type HookExec struct {
 	Owner string
 	Repo  string
 	Event string
+	Data  io.ReadSeeker
 }
 
 func (h *HookExec) GetPathExecs() ([]string, error) {
@@ -72,10 +74,32 @@ func (h *HookExec) Exec() error {
 
 	for _, f := range files {
 		cmd := exec.Command(f)
-		// io.Copy( cmd.StdinPipe
-		err := cmd.Run()
+
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		stdin, err := cmd.StdinPipe()
 		if err != nil {
 			multierror.Append(result, err)
+			continue
+		}
+		defer stdin.Close()
+
+		// io.Copy( cmd.StdinPipe
+		err = cmd.Start()
+		if err != nil {
+			multierror.Append(result, err)
+			continue
+		}
+
+		// h.Data.Seek(0, 0)
+		io.Copy(stdin, h.Data)
+		stdin.Close()
+
+		err = cmd.Wait()
+		if err != nil {
+			multierror.Append(result, err)
+			continue
 		}
 	}
 

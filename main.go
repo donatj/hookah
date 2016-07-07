@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
@@ -29,24 +31,33 @@ func main() {
 			return
 		}
 
-		basicHook := &BasicHook{}
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return
+		}
+		buff := bytes.NewReader(b)
 
-		decoder := json.NewDecoder(r.Body)
-		err := decoder.Decode(basicHook)
+		basicHook := &HookJSON{}
+
+		decoder := json.NewDecoder(buff)
+		err = decoder.Decode(basicHook)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			log.Println(err)
 			return
 		}
+
 		if basicHook.Repository.Name == "" || basicHook.Repository.Owner.Login == "" {
 			http.Error(w, "Failed parsing JSON HTTP Body", http.StatusBadRequest)
 			return
 		}
 
+		buff.Seek(0, 0)
 		x := HookExec{
 			Owner: basicHook.Repository.Owner.Login,
 			Repo:  basicHook.Repository.Name,
 			Event: ghEvent,
+			Data:  buff,
 		}
 
 		err = x.Exec()
@@ -63,7 +74,7 @@ func main() {
 }
 
 // BasicHook represents the minimum body we need to parse
-type BasicHook struct {
+type HookJSON struct {
 	Repository struct {
 		Name  string `json:"name"`
 		Owner struct {
