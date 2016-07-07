@@ -52,7 +52,6 @@ func main() {
 			return
 		}
 
-		buff.Seek(0, 0)
 		x := HookExec{
 			Owner: basicHook.Repository.Owner.Login,
 			Repo:  basicHook.Repository.Name,

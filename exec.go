@@ -92,7 +92,7 @@ func (h *HookExec) Exec() error {
 			continue
 		}
 
-		// h.Data.Seek(0, 0)
+		h.Data.Seek(0, 0)
 		io.Copy(stdin, h.Data)
 		stdin.Close()
 
