@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+// HookExec represents a call to a hook
 type HookExec struct {
 	Owner string
 	Repo  string
@@ -17,6 +18,7 @@ type HookExec struct {
 	Data  io.ReadSeeker
 }
 
+// GetPathExecs fetches the executable filenames for the given path
 func (h *HookExec) GetPathExecs() ([]string, error) {
 	path := filepath.Join(".", h.Owner, h.Repo, h.Event)
 
@@ -60,6 +62,7 @@ func (h *HookExec) GetPathExecs() ([]string, error) {
 	return files, nil
 }
 
+// Exec triggers the execution of all scripts associated with the given Hook
 func (h *HookExec) Exec() error {
 	files, err := h.GetPathExecs()
 	if err != nil {
