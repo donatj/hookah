@@ -58,10 +58,6 @@ func (h *HookExec) GetPathExecs() ([]string, error) {
 	}
 
 	return files, nil
-	// for _, f := range files {
-	// 	fmt.Println(f.Name())
-	// }
-
 }
 
 func (h *HookExec) Exec() error {
