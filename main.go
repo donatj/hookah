@@ -12,8 +12,12 @@ import (
 )
 
 var (
-	httpPort     = flag.Uint("http-port", 8080, "HTTP 'admin' port to listen on")
 	validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
+)
+
+var (
+	httpPort   = flag.Uint("http-port", 8080, "HTTP port to listen on")
+	serverRoot = flag.String("server-root", ".", "The root directory of the deploy script hierarchy")
 )
 
 func init() {
@@ -61,6 +65,8 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x := HookExec{
+		Root: *serverRoot,
+
 		Owner: basicHook.Repository.Owner.Login,
 		Repo:  basicHook.Repository.Name,
 		Event: ghEvent,
