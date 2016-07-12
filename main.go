@@ -4,12 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"regexp"
 	"strconv"
-)
-
-var (
-	validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 )
 
 var (
@@ -22,13 +17,15 @@ func init() {
 }
 
 func main() {
+	hServe, err := NewHookServer(*serverRoot)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	httpMux := http.NewServeMux()
+	httpMux.Handle("/", hServe)
 
-	hServe := HookServer{}
-
-	httpMux.Handle("/", &hServe)
-
-	err := http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), httpMux)
+	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), httpMux)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -3,13 +3,43 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"regexp"
 )
+
+var errsNotDir = errors.New("Given path is not a dir")
+var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 
 // HookServer implements net/http.Handler
 type HookServer struct {
+	RootDir string
+}
+
+// NewHookServer instantiates a new HookServer with some basic validation
+// on the root directory
+func NewHookServer(rootdir string) (*HookServer, error) {
+	f, err := os.Open(rootdir)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if !fi.IsDir() {
+		return nil, errsNotDir
+	}
+
+	return &HookServer{
+		RootDir: rootdir,
+	}, nil
 }
 
 func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -41,16 +71,17 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	x := HookExec{
-		Root: *serverRoot,
+	hook := HookExec{
+		RootDir: h.RootDir,
 
 		Owner: basicHook.Repository.Owner.Login,
 		Repo:  basicHook.Repository.Name,
+
 		Event: ghEvent,
 		Data:  buff,
 	}
 
-	err = x.Exec()
+	err = hook.Exec()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		log.Println(err)

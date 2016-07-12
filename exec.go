@@ -12,17 +12,18 @@ import (
 
 // HookExec represents a call to a hook
 type HookExec struct {
-	Root string
+	RootDir string
 
 	Owner string
 	Repo  string
+
 	Event string
 	Data  io.ReadSeeker
 }
 
 // GetPathExecs fetches the executable filenames for the given path
 func (h *HookExec) GetPathExecs() ([]string, error) {
-	path := filepath.Join(h.Root, h.Owner, h.Repo, h.Event)
+	path := filepath.Join(h.RootDir, h.Owner, h.Repo, h.Event)
 
 	files := []string{}
 
