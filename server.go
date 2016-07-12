@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -47,6 +48,11 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !validGhEvent.MatchString(ghEvent) {
 		http.Error(w, "Request requires valid X-Github-Event", http.StatusBadRequest)
+		return
+	}
+
+	if ghEvent == "ping" {
+		fmt.Fprintln(w, "pong")
 		return
 	}
 
