@@ -58,6 +58,8 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
 		return
 	}
 	buff := bytes.NewReader(b)
@@ -72,16 +74,22 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if basicHook.Repository.Name == "" || basicHook.Repository.Owner.Login == "" {
+	login := basicHook.Repository.Owner.GetLogin()
+	repo := basicHook.Repository.Name
+
+	fmt.Fprintf(w, "%s/%s", login, repo)
+
+	if repo == "" || login == "" {
 		http.Error(w, "Failed parsing JSON HTTP Body", http.StatusBadRequest)
+		log.Println(err)
 		return
 	}
 
 	hook := HookExec{
 		RootDir: h.RootDir,
 
-		Owner: basicHook.Repository.Owner.Login,
-		Repo:  basicHook.Repository.Name,
+		Owner: login,
+		Repo:  repo,
 
 		Event: ghEvent,
 		Data:  buff,
@@ -94,15 +102,27 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HookUserJSON exists because some hooks use Login, some use Name
+// - it's horribly inconsistant
+type HookUserJSON struct {
+	Login string `json:"login"`
+	Name  string `json:"name"`
+}
+
+// GetLogin is used to get the login from the data github decided to pass today
+func (h *HookUserJSON) GetLogin() string {
+	if h.Login != "" {
+		return h.Login
+	}
+
+	return h.Name
+}
+
 // HookJSON represents the minimum body we need to parse
 type HookJSON struct {
 	Repository struct {
-		Name  string `json:"name"`
-		Owner struct {
-			Login string `json:"login"`
-		} `json:"owner"`
+		Name  string       `json:"name"`
+		Owner HookUserJSON `json:"owner"`
 	} `json:"repository"`
-	Sender struct {
-		Login string `json:"login"`
-	} `json:"sender"`
+	Sender HookUserJSON `json:"sender"`
 }
