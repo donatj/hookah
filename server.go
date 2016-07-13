@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 )
 
 var errsNotDir = errors.New("Given path is not a dir")
@@ -18,6 +19,7 @@ var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
+	sync.Mutex
 }
 
 // NewHookServer instantiates a new HookServer with some basic validation
@@ -93,6 +95,8 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		Event: ghEvent,
 		Data:  buff,
+
+		HookServer: h,
 	}
 
 	err = hook.Exec()

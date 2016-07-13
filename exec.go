@@ -19,6 +19,8 @@ type HookExec struct {
 
 	Event string
 	Data  io.ReadSeeker
+
+	HookServer *HookServer
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -73,6 +75,9 @@ func (h *HookExec) Exec() error {
 	}
 
 	var result error
+
+	h.HookServer.Lock()
+	defer h.HookServer.Unlock()
 
 	for _, f := range files {
 		cmd := exec.Command(f)
