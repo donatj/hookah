@@ -99,11 +99,11 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HookServer: h,
 	}
 
-	err = hook.Exec()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println(err)
-	}
+	go hook.Exec()
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusBadRequest)
+	// 	log.Println(err)
+	// }
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name
