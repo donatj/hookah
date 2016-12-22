@@ -85,6 +85,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		ehash := hash.Sum(nil)
 		esig := "sha1=" + hex.EncodeToString(ehash)
+
 		if !hmac.Equal([]byte(esig), []byte(xSig)) {
 			http.Error(w, "HMAC verification failed", http.StatusForbidden)
 			log.Println("HMAC verification failed")
