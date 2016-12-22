@@ -10,6 +10,7 @@ import (
 var (
 	httpPort   = flag.Uint("http-port", 8080, "HTTP port to listen on")
 	serverRoot = flag.String("server-root", ".", "The root directory of the deploy script hierarchy")
+	secret     = flag.String("secret", "", "Optional Github HMAC secret key")
 )
 
 func init() {
@@ -17,7 +18,7 @@ func init() {
 }
 
 func main() {
-	hServe, err := NewHookServer(*serverRoot)
+	hServe, err := NewHookServer(*serverRoot, *secret)
 	if err != nil {
 		log.Fatal(err)
 	}
