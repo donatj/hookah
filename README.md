@@ -8,6 +8,14 @@ Hookah is a simple server for Github Webhooks that forwards the hooks messsage t
 
 It simply passes the message on to the STDIN of any script.
 
+## Installation
+
+### From Source:
+
+```bash
+go get -u -v github.com/donatj/hookah/cmd/hookah
+```
+
 ## Example Hook Scripts
 
 ### bash + [jq](https://stedolan.github.io/jq/)
