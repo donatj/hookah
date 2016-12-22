@@ -133,7 +133,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name
-// - it's horribly inconsistant
+// - it's horribly inconsistent
 type HookUserJSON struct {
 	Login string `json:"login"`
 	Name  string `json:"name"`
