@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -68,7 +69,7 @@ func (h *HookExec) GetPathExecs() ([]string, error) {
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec() error {
+func (h *HookExec) Exec(timeout time.Duration) error {
 	files, err := h.GetPathExecs()
 	if err != nil {
 		return err
@@ -103,7 +104,13 @@ func (h *HookExec) Exec() error {
 		io.Copy(stdin, h.Data)
 		stdin.Close()
 
+		timer := time.AfterFunc(timeout, func() {
+			cmd.Process.Kill()
+		})
+
 		err = cmd.Wait()
+		timer.Stop()
+
 		if err != nil {
 			multierror.Append(result, err)
 			continue

@@ -14,6 +14,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"time"
 )
 
 var errsNotDir = errors.New("Given path is not a dir")
@@ -22,13 +23,14 @@ var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
+	Timeout time.Duration
 	secret  string
 	sync.Mutex
 }
 
 // NewHookServer instantiates a new HookServer with some basic validation
 // on the root directory
-func NewHookServer(rootdir string, secret string) (*HookServer, error) {
+func NewHookServer(rootdir, secret string, timeout time.Duration) (*HookServer, error) {
 	f, err := os.Open(rootdir)
 	if err != nil {
 		return nil, err
@@ -46,6 +48,7 @@ func NewHookServer(rootdir string, secret string) (*HookServer, error) {
 
 	return &HookServer{
 		RootDir: rootdir,
+		Timeout: timeout,
 		secret:  secret,
 	}, nil
 }
@@ -126,7 +129,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HookServer: h,
 	}
 
-	go hook.Exec()
+	go hook.Exec(h.Timeout)
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name
