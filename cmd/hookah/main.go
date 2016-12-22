@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/donatj/hookah"
 )
 
 var (
@@ -20,7 +22,7 @@ func init() {
 }
 
 func main() {
-	hServe, err := NewHookServer(*serverRoot, *secret, *timeout)
+	hServe, err := hookah.NewHookServer(*serverRoot, *secret, *timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
