@@ -18,9 +18,11 @@ go get -u -v github.com/donatj/hookah/cmd/hookah
 
 ## Usage
 
-On receiving a webhook request from Github, Hookah checks `{server-root}/{vendor}/{X-Github-Event}/*` for any executable scripts, and executes them sequentially passing the JSON payload to it's standard in.
+When receiving a webhook request from Github, Hookah checks `{server-root}/{vendor}/{product}/{X-Github-Event}/*` for any executable scripts, and executes them sequentially passing the JSON payload to it's standard in.
 
 This allows hook scripts to be written in any language you prefer.
+
+For example, a script `server/donatj/hookah/push/log.rb` would be executed every time a "push" event webhook was received from Github on the donatj/hookah repo.
 
 ## Example Hook Scripts
 
