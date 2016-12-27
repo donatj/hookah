@@ -18,7 +18,9 @@ go get -u -v github.com/donatj/hookah/cmd/hookah
 
 ## Usage
 
-On receiving a webhook call, Hookah checks `{server-root}/{vendor}/{X-Github-Event}/*` for any executable scripts, and executes them sequentially passing the JSON payload to it's standard in. This allows simple scripts to be written in whatever your prefered langauge happens to be.
+On receiving a webhook request from Github, Hookah checks `{server-root}/{vendor}/{X-Github-Event}/*` for any executable scripts, and executes them sequentially passing the JSON payload to it's standard in.
+
+This allows hook scripts to be written in any language you prefer.
 
 ## Example Hook Scripts
 
