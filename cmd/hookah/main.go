@@ -27,10 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	httpMux := http.NewServeMux()
-	httpMux.Handle("/", hServe)
-
-	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), httpMux)
+	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), hServe)
 	if err != nil {
 		log.Fatal(err)
 	}
