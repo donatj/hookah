@@ -60,4 +60,4 @@ print_r($data);
 
 ### Note:
 
-Don't forget to make your scripts executable (`chmod +x script`), and add a [shebang](https://en.m.wikipedia.org/wiki/Shebang_(Unix)) poiting to your desired interpreter (i.e. `#!/bin/bash`) as the first line.
+Don't forget to make your scripts executable (`chmod +x <script filename>`), and add a [shebang](https://en.m.wikipedia.org/wiki/Shebang_(Unix)) poiting to your desired interpreter (i.e. `#!/bin/bash`) as the first line.
