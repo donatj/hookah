@@ -4,7 +4,7 @@
 [![GoDoc](https://godoc.org/github.com/donatj/hookah?status.svg)](https://godoc.org/github.com/donatj/hookah)
 [![Build Status](https://travis-ci.org/donatj/hookah.svg?branch=master)](https://travis-ci.org/donatj/hookah)
 
-Hookah is a simple server for Github Webhooks that forwards the hooks messsage to any manner of script, be they PHP, Ruby, Python or even straight up shell.
+Hookah is a simple server for GitHub Webhooks that forwards the hooks messsage to any manner of script, be they PHP, Ruby, Python or even straight up shell.
 
 It simply passes the message on to the STDIN of any script.
 
@@ -18,7 +18,7 @@ go get -u -v github.com/donatj/hookah/cmd/hookah
 
 ## Usage
 
-When receiving a webhook request from Github, Hookah checks `{server-root}/{vendor}/{product}/{X-Github-Event}/*` for any executable scripts, and executes them sequentially passing the JSON payload to it's standard in.
+When receiving a webhook request from GitHub, Hookah checks `{server-root}/{vendor}/{product}/{X-Github-Event}/*` for any executable scripts, and executes them sequentially passing the JSON payload to it's standard in.
 
 This allows hook scripts to be written in any language you prefer.
 
@@ -57,3 +57,7 @@ $data = json_decode($input, true);
 print_r($data);
 
 ```
+
+### Note:
+
+Don't forget to make your script executable (`chmod +x script`), and add a shebang (i.e. `#!/bin/bash`) as the first line.
