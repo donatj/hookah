@@ -36,7 +36,7 @@ For example, a script `server/donatj/hookah/push/log.rb` would be executed every
 set -e
 
 json=`cat`
-ref=$(echo "$json" | jq -r .ref)
+ref=$(<<< "$json" jq -r .ref)
 
 echo "$ref"
 if [ "$ref" == "refs/heads/master" ]
