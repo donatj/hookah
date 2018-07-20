@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -25,52 +26,79 @@ type HookExec struct {
 }
 
 // GetPathExecs fetches the executable filenames for the given path
-func (h *HookExec) GetPathExecs() ([]string, error) {
-	path := filepath.Join(h.RootDir, h.Owner, h.Repo, h.Event)
+func (h *HookExec) GetPathExecs() ([]string, []string, error) {
+	outfiles := []string{}
+	outErrHandlers := []string{}
 
+	paths := []string{
+		filepath.Join(h.RootDir),
+		filepath.Join(h.RootDir, h.Owner),
+		filepath.Join(h.RootDir, h.Owner, h.Repo),
+		filepath.Join(h.RootDir, h.Owner, h.Repo, h.Event),
+	}
+
+	for _, path := range paths {
+		files, errHandlers, err := pathScan(path)
+		if err != nil {
+			return []string{}, []string{}, err
+		}
+		outfiles = append(outfiles, files...)
+		outErrHandlers = append(errHandlers, files...)
+	}
+
+	return outfiles, outErrHandlers, nil
+}
+
+func pathScan(path string) ([]string, []string, error) {
 	files := []string{}
+	errHandlers := []string{}
 
 	fs, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return files, nil
+			return files, errHandlers, nil
 		}
 
-		return files, err
+		return files, errHandlers, err
 	}
 
 	if fs.IsDir() {
 		d, err := os.Open(path)
 		defer d.Close()
 		if err != nil {
-			return files, err
+			return files, errHandlers, err
 		}
 
 		fi, err := d.Readdir(-1)
 		if err != nil {
-			return files, err
+			return files, errHandlers, err
 		}
 
 		for _, fi := range fi {
 			if isExecFile(fi) {
-				// fmt.Println(fi.Name(), fi.Size(), "bytes")
-				files = append(files, filepath.Join(path, fi.Name()))
+				if strings.HasPrefix(fi.Name(), "@@error") {
+					errHandlers = append(errHandlers, filepath.Join(path, fi.Name()))
+				} else {
+					files = append(files, filepath.Join(path, fi.Name()))
+				}
 			}
 		}
 
 	} else if isExecFile(fs) {
 		// fmt.Println(fs.Name(), fs.Size(), "bytes")
-		files = append(files, filepath.Join(path, fs.Name()))
+		// files = append(files, filepath.Join(path, fs.Name()))
+		// this should be picked up on a different sweep
 	} else {
-		return files, errors.New("bad file mumbo jumbo")
+		return files, errHandlers, errors.New("bad file mumbo jumbo")
 	}
 
-	return files, nil
+	return files, errHandlers, nil
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
 func (h *HookExec) Exec(timeout time.Duration) error {
-	files, err := h.GetPathExecs()
+	files, errHandlers, err := h.GetPathExecs()
+	_ = errHandlers
 	if err != nil {
 		return err
 	}
@@ -81,14 +109,14 @@ func (h *HookExec) Exec(timeout time.Duration) error {
 	defer h.HookServer.Unlock()
 
 	for _, f := range files {
-		err := execFile(f, h, timeout)
+		err := execFile(f, h.Data, timeout)
 		multierror.Append(result, err)
 	}
 
 	return result
 }
 
-func execFile(f string, h *HookExec, timeout time.Duration) error {
+func execFile(f string, data io.ReadSeeker, timeout time.Duration) error {
 	cmd := exec.Command(f)
 
 	cmd.Stdout = os.Stdout
@@ -105,8 +133,8 @@ func execFile(f string, h *HookExec, timeout time.Duration) error {
 		return err
 	}
 
-	h.Data.Seek(0, 0)
-	io.Copy(stdin, h.Data)
+	data.Seek(0, 0)
+	io.Copy(stdin, data)
 	stdin.Close()
 
 	timer := time.AfterFunc(timeout, func() {
