@@ -110,7 +110,7 @@ func (h *HookExec) Exec(timeout time.Duration) error {
 
 	for _, f := range files {
 		err := execFile(f, h.Data, timeout)
-		multierror.Append(result, err)
+		result = multierror.Append(result, err)
 	}
 
 	return result
@@ -133,8 +133,15 @@ func execFile(f string, data io.ReadSeeker, timeout time.Duration) error {
 		return err
 	}
 
-	data.Seek(0, 0)
-	io.Copy(stdin, data)
+	_, err = data.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(stdin, data)
+	if err != nil {
+		return err
+	}
 	stdin.Close()
 
 	timer := time.AfterFunc(timeout, func() {
