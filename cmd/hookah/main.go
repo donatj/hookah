@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/donatj/hmacsig"
 	"github.com/donatj/hookah"
 )
 
@@ -22,12 +23,17 @@ func init() {
 }
 
 func main() {
-	hServe, err := hookah.NewHookServer(*serverRoot, *secret, *timeout)
+	hServe, err := hookah.NewHookServer(*serverRoot, *timeout)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), hServe)
+	var serve http.Handler = hServe
+	if *secret != "" {
+		serve = hmacsig.Handler(hServe, *secret, hmacsig.Options{})
+	}
+
+	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), serve)
 	if err != nil {
 		log.Fatal(err)
 	}

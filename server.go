@@ -2,9 +2,6 @@ package hookah
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,13 +21,12 @@ var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 type HookServer struct {
 	RootDir string
 	Timeout time.Duration
-	secret  string
 	sync.Mutex
 }
 
 // NewHookServer instantiates a new HookServer with some basic validation
 // on the root directory
-func NewHookServer(rootdir, secret string, timeout time.Duration) (*HookServer, error) {
+func NewHookServer(rootdir string, timeout time.Duration) (*HookServer, error) {
 	f, err := os.Open(rootdir)
 	if err != nil {
 		return nil, err
@@ -49,7 +45,6 @@ func NewHookServer(rootdir, secret string, timeout time.Duration) (*HookServer, 
 	return &HookServer{
 		RootDir: rootdir,
 		Timeout: timeout,
-		secret:  secret,
 	}, nil
 }
 
@@ -73,28 +68,6 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	buff := bytes.NewReader(b)
-
-	if h.secret != "" {
-		xSig := r.Header.Get("X-Hub-Signature")
-
-		if xSig == "" {
-			http.Error(w, "Missing required X-Hub-Signature for HMAC verification", http.StatusForbidden)
-			log.Println("missing X-Hub-Signature")
-			return
-		}
-
-		hash := hmac.New(sha1.New, []byte(h.secret))
-		hash.Write(b)
-
-		ehash := hash.Sum(nil)
-		esig := "sha1=" + hex.EncodeToString(ehash)
-
-		if !hmac.Equal([]byte(esig), []byte(xSig)) {
-			http.Error(w, "HMAC verification failed", http.StatusForbidden)
-			log.Println("HMAC verification failed")
-			return
-		}
-	}
 
 	basicHook := &HookJSON{}
 
