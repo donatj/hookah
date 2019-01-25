@@ -2,11 +2,13 @@ package hookah
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -101,7 +103,8 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 
 		if err != nil {
 			for _, e := range errHandlers {
-				err := execFile(e, h.Data, timeout)
+				env := getErrorHandlerEnv(f, err)
+				err := execFile(e, h.Data, timeout, env...)
 				result = multierror.Append(result, err)
 			}
 		}
@@ -111,11 +114,28 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 	return result
 }
 
-func execFile(f string, data io.ReadSeeker, timeout time.Duration) error {
+func getErrorHandlerEnv(f string, err error) []string {
+	env := []string{
+		"HOOKAH_EXEC_ERROR_FILE=" + f,
+		"HOOKAH_EXEC_ERROR=" + err.Error(),
+	}
+
+	if exiterr, ok := err.(*exec.ExitError); ok {
+		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+			env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status.ExitStatus()))
+		}
+	}
+
+	return env
+}
+
+func execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) error {
 	cmd := exec.Command(f)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	cmd.Env = append(os.Environ(), env...)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
