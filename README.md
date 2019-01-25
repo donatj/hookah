@@ -45,6 +45,7 @@ then
 else
         echo "Ref was not Master"
 fi
+
 ```
 
 ### PHP
@@ -54,8 +55,8 @@ fi
 <?php
 
 $input = file_get_contents("php://stdin");
+$data  = json_decode($input, true);
 
-$data = json_decode($input, true);
 print_r($data);
 
 ```
