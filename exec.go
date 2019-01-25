@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -22,7 +23,7 @@ type HookExec struct {
 	Event string
 	Data  io.ReadSeeker
 
-	HookServer *HookServer
+	HookServer sync.Locker
 }
 
 // GetPathExecs fetches the executable filenames for the given path
