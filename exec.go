@@ -67,7 +67,7 @@ func pathScan(path string) ([]string, []string, error) {
 
 		for _, fi := range fi {
 			if isExecFile(fi) {
-				if strings.HasPrefix(fi.Name(), "@@error") {
+				if strings.HasPrefix(fi.Name(), "@@error.") {
 					errHandlers = append(errHandlers, filepath.Join(path, fi.Name()))
 				} else {
 					files = append(files, filepath.Join(path, fi.Name()))
