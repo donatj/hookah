@@ -96,7 +96,12 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HookServer: h,
 	}
 
-	go hook.Exec(login, repo, ghEvent, h.Timeout)
+	go func() {
+		h.Lock()
+		defer h.Unlock()
+
+		hook.Exec(login, repo, ghEvent, h.Timeout)
+	}()
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name

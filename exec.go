@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -16,10 +15,7 @@ import (
 // HookExec represents a call to a hook
 type HookExec struct {
 	RootDir string
-
-	Data io.ReadSeeker
-
-	HookServer sync.Locker
+	Data    io.ReadSeeker
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -99,9 +95,6 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 	}
 
 	var result error
-
-	h.HookServer.Lock()
-	defer h.HookServer.Unlock()
 
 	for _, f := range files {
 		err := execFile(f, h.Data, timeout)
