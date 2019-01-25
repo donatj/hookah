@@ -41,7 +41,7 @@ func (h *HookExec) GetPathExecs() ([]string, []string, error) {
 			return []string{}, []string{}, err
 		}
 		outfiles = append(outfiles, files...)
-		outErrHandlers = append(errHandlers, files...)
+		outErrHandlers = append(outErrHandlers, errHandlers...)
 	}
 
 	return outfiles, outErrHandlers, nil
