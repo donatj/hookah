@@ -104,7 +104,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name
-// - it's horribly inconsistent
+// - it's horribly inconsistent and a bad flaw on GitHubs part
 type HookUserJSON struct {
 	Login string `json:"login"`
 	Name  string `json:"name"`
