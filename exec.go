@@ -30,15 +30,13 @@ func (h *HookExec) GetPathExecs() ([]string, []string, error) {
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
-	paths := []string{
-		filepath.Join(h.RootDir),
-		filepath.Join(h.RootDir, h.Owner),
-		filepath.Join(h.RootDir, h.Owner, h.Repo),
-		filepath.Join(h.RootDir, h.Owner, h.Repo, h.Event),
-	}
+	paths := []string{h.RootDir, h.Owner, h.Repo, h.Event}
 
+	workpath := ""
 	for _, path := range paths {
-		files, errHandlers, err := pathScan(path)
+		workpath = filepath.Join(workpath, path)
+
+		files, errHandlers, err := pathScan(workpath)
 		if err != nil {
 			return []string{}, []string{}, err
 		}
