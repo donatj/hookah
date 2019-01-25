@@ -89,7 +89,7 @@ func pathScan(path string) ([]string, []string, error) {
 // Exec triggers the execution of all scripts associated with the given Hook
 func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error {
 	files, errHandlers, err := h.GetPathExecs(owner, repo, event)
-	_ = errHandlers
+
 	if err != nil {
 		return err
 	}
@@ -98,6 +98,13 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 
 	for _, f := range files {
 		err := execFile(f, h.Data, timeout)
+
+		if err != nil {
+			for _, e := range errHandlers {
+				err := execFile(e, h.Data, timeout)
+				result = multierror.Append(result, err)
+			}
+		}
 		result = multierror.Append(result, err)
 	}
 
