@@ -23,7 +23,10 @@ func init() {
 }
 
 func main() {
-	hServe, err := hookah.NewHookServer(*serverRoot, *timeout)
+	hServe, err := hookah.NewHookServer(
+		*serverRoot,
+		hookah.ServerExecTimeout(*timeout),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
