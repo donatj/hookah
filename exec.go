@@ -139,11 +139,7 @@ func execFile(f string, data io.ReadSeeker, timeout time.Duration) error {
 	err = cmd.Wait()
 	timer.Stop()
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // todo: base this on OS
