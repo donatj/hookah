@@ -17,21 +17,17 @@ import (
 type HookExec struct {
 	RootDir string
 
-	Owner string
-	Repo  string
-
-	Event string
-	Data  io.ReadSeeker
+	Data io.ReadSeeker
 
 	HookServer sync.Locker
 }
 
 // GetPathExecs fetches the executable filenames for the given path
-func (h *HookExec) GetPathExecs() ([]string, []string, error) {
+func (h *HookExec) GetPathExecs(owner, repo, event string) ([]string, []string, error) {
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
-	paths := []string{h.RootDir, h.Owner, h.Repo, h.Event}
+	paths := []string{h.RootDir, owner, repo, event}
 
 	workpath := ""
 	for _, path := range paths {
@@ -95,8 +91,8 @@ func pathScan(path string) ([]string, []string, error) {
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(timeout time.Duration) error {
-	files, errHandlers, err := h.GetPathExecs()
+func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error {
+	files, errHandlers, err := h.GetPathExecs(owner, repo, event)
 	_ = errHandlers
 	if err != nil {
 		return err

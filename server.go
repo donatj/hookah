@@ -91,18 +91,12 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hook := HookExec{
-		RootDir: h.RootDir,
-
-		Owner: login,
-		Repo:  repo,
-
-		Event: ghEvent,
-		Data:  buff,
-
+		RootDir:    h.RootDir,
+		Data:       buff,
 		HookServer: h,
 	}
 
-	go hook.Exec(h.Timeout)
+	go hook.Exec(login, repo, ghEvent, h.Timeout)
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name
