@@ -96,7 +96,7 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 		return err
 	}
 
-	var result error
+	var result *multierror.Error
 
 	for _, f := range files {
 		err := execFile(f, h.Data, timeout)
@@ -111,7 +111,7 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 		result = multierror.Append(result, err)
 	}
 
-	return result
+	return result.ErrorOrNil()
 }
 
 func getErrorHandlerEnv(f string, err error) []string {

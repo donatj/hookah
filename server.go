@@ -59,14 +59,14 @@ func NewHookServer(rootdir string, options ...ServerOption) (*HookServer, error)
 		RootDir: rootdir,
 	}
 
-	var result error
+	var result *multierror.Error
 
 	for _, option := range options {
 		err := option(server)
 		result = multierror.Append(result, err)
 	}
 
-	return server, result
+	return server, result.ErrorOrNil()
 }
 
 // ServerExecTimeout configures the HookServer per-script execution timeout
