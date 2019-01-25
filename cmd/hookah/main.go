@@ -4,6 +4,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,6 +17,8 @@ var (
 	serverRoot = flag.String("server-root", ".", "The root directory of the hook script hierarchy")
 	secret     = flag.String("secret", "", "Optional Github HMAC secret key")
 	timeout    = flag.Duration("timeout", 10*time.Minute, "Exec timeout on hook scripts")
+
+	errlog = flag.String("err-log", "", "Path to write the error log to. Defaults to standard error.")
 )
 
 func init() {
@@ -26,6 +29,7 @@ func main() {
 	hServe, err := hookah.NewHookServer(
 		*serverRoot,
 		hookah.ServerExecTimeout(*timeout),
+		hookah.ServerErrorLog(getLogger(*errlog)),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -40,4 +44,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func getLogger(filename string) hookah.Logger {
+	if filename != "" {
+		f, err := os.OpenFile(*errlog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return log.New(f, "", log.LstdFlags)
+	}
+
+	return log.New(os.Stderr, "", log.LstdFlags)
 }

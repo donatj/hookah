@@ -19,10 +19,18 @@ import (
 var errsNotDir = errors.New("Given path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 
+// Logger handles Printf
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
-	Timeout time.Duration
+
+	Timeout  time.Duration
+	ErrorLog Logger
+
 	sync.Mutex
 }
 
@@ -65,6 +73,14 @@ func NewHookServer(rootdir string, options ...ServerOption) (*HookServer, error)
 func ServerExecTimeout(timeout time.Duration) ServerOption {
 	return func(h *HookServer) error {
 		h.Timeout = timeout
+		return nil
+	}
+}
+
+// ServerErrorLog configures the HookServer error logger
+func ServerErrorLog(log Logger) ServerOption {
+	return func(h *HookServer) error {
+		h.ErrorLog = log
 		return nil
 	}
 }
@@ -120,7 +136,10 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		hook.Exec(login, repo, ghEvent, h.Timeout)
+		err := hook.Exec(login, repo, ghEvent, h.Timeout)
+		if err != nil && h.ErrorLog != nil {
+			h.ErrorLog.Printf("%s/%s:%s - '%s'", login, repo, ghEvent, err)
+		}
 	}()
 }
 
