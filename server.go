@@ -91,9 +91,8 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hook := HookExec{
-		RootDir:    h.RootDir,
-		Data:       buff,
-		HookServer: h,
+		RootDir: h.RootDir,
+		Data:    buff,
 	}
 
 	go func() {
