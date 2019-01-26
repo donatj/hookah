@@ -104,8 +104,8 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration) error 
 		if err != nil {
 			for _, e := range errHandlers {
 				env := getErrorHandlerEnv(f, err)
-				err := execFile(e, h.Data, timeout, env...)
-				result = multierror.Append(result, err)
+				err2 := execFile(e, h.Data, timeout, env...)
+				result = multierror.Append(result, err2)
 			}
 		}
 		result = multierror.Append(result, err)
