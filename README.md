@@ -12,7 +12,7 @@ It simply passes the message on to the STDIN of any script.
 
 ## Installation
 
-### From Source:
+### From Source
 
 ```bash
 go get -u -v github.com/donatj/hookah/cmd/hookah
@@ -61,6 +61,6 @@ print_r($data);
 
 ```
 
-### Note:
+### Note
 
 Don't forget to make your scripts executable (`chmod +x <script filename>`), and add a [shebang](https://en.m.wikipedia.org/wiki/Shebang_(Unix)) poiting to your desired interpreter (i.e. `#!/bin/bash`) as the first line.
