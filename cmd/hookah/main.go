@@ -30,7 +30,7 @@ func main() {
 
 	var serve http.Handler = hServe
 	if *secret != "" {
-		serve = hmacsig.Handler(hServe, *secret, hmacsig.Options{})
+		serve = hmacsig.Handler(hServe, *secret)
 	}
 
 	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), serve)
