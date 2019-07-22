@@ -64,3 +64,33 @@ print_r($data);
 ### Note
 
 Don't forget to make your scripts executable (`chmod +x <script filename>`), and add a [shebang](https://en.m.wikipedia.org/wiki/Shebang_(Unix)) poiting to your desired interpreter (i.e. `#!/bin/bash`) as the first line.
+
+## Documentation
+
+Standard input (stdin) contains the unparsed JSON body of the request.
+
+### Environment Reference
+
+#### All Executions
+
+`GITHUB_EVENT`
+
+The contents of the `X-Github-Event` header.
+
+`GITHUB_DELIVERY`
+
+The contents of the `X-GitHub-Delivery` header. A Unique ID for the Given Request
+
+#### Error Handler Executions
+
+`HOOKAH_EXEC_ERROR_FILE`
+
+The path to the executable that failed to execute.
+
+`HOOKAH_EXEC_ERROR`
+
+The error message received while trying to execute the script.
+
+`HOOKAH_EXEC_EXIT_STATUS`
+
+The exit code of the script. This may **not** be defined in certain cases where execution failed entirely.
