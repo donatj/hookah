@@ -127,6 +127,8 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ghDelivery := r.Header.Get("X-GitHub-Delivery")
+
 	hook := HookExec{
 		RootDir: h.RootDir,
 		Data:    buff,
@@ -136,7 +138,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		err := hook.Exec(login, repo, ghEvent, h.Timeout)
+		err := hook.Exec(login, repo, ghEvent, h.Timeout, "GITHUB_DELIVERY="+ghDelivery, "GITHUB_EVENT="+ghEvent)
 		if err != nil && h.ErrorLog != nil {
 			h.ErrorLog.Printf("%s/%s:%s - '%s'", login, repo, ghEvent, err)
 		}
