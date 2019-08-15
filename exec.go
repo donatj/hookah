@@ -18,6 +18,7 @@ import (
 type HookExec struct {
 	RootDir string
 	Data    io.ReadSeeker
+	InfoLog Logger
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -88,6 +89,13 @@ func pathScan(path string) ([]string, []string, error) {
 	return files, errHandlers, nil
 }
 
+// InfoLogf logs to the info logger if not nil
+func (h *HookExec) InfoLogf(format string, v ...interface{}) {
+	if h.InfoLog != nil {
+		h.InfoLog.Printf(format, v...)
+	}
+}
+
 // Exec triggers the execution of all scripts associated with the given Hook
 func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ...string) error {
 	files, errHandlers, err := h.GetPathExecs(owner, repo, event)
@@ -99,10 +107,16 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ..
 	var result *multierror.Error
 
 	for _, f := range files {
+		h.InfoLogf("beginning execution of %#v", f)
+
 		err := execFile(f, h.Data, timeout, env...)
 
 		if err != nil {
+			h.InfoLogf("exec error: %s", err)
+
 			for _, e := range errHandlers {
+				h.InfoLogf("beginning error handler execution of %#v", e)
+
 				env2 := append(env, getErrorHandlerEnv(f, err)...)
 				err2 := execFile(e, h.Data, timeout, env2...)
 				result = multierror.Append(result, err2)

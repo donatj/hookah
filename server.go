@@ -30,6 +30,7 @@ type HookServer struct {
 
 	Timeout  time.Duration
 	ErrorLog Logger
+	InfoLog  Logger
 
 	sync.Mutex
 }
@@ -85,6 +86,14 @@ func ServerErrorLog(log Logger) ServerOption {
 	}
 }
 
+// ServerInfoLog configures the HookServer info logger
+func ServerInfoLog(log Logger) ServerOption {
+	return func(h *HookServer) error {
+		h.ErrorLog = log
+		return nil
+	}
+}
+
 func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ghEvent := r.Header.Get("X-Github-Event")
 
@@ -132,6 +141,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hook := HookExec{
 		RootDir: h.RootDir,
 		Data:    buff,
+		InfoLog: h.InfoLog,
 	}
 
 	go func() {
