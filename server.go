@@ -89,7 +89,7 @@ func ServerErrorLog(log Logger) ServerOption {
 // ServerInfoLog configures the HookServer info logger
 func ServerInfoLog(log Logger) ServerOption {
 	return func(h *HookServer) error {
-		h.ErrorLog = log
+		h.InfoLog = log
 		return nil
 	}
 }
