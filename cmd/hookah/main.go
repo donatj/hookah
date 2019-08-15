@@ -17,6 +17,7 @@ var (
 	serverRoot = flag.String("server-root", ".", "The root directory of the hook script hierarchy")
 	secret     = flag.String("secret", "", "Optional Github HMAC secret key")
 	timeout    = flag.Duration("timeout", 10*time.Minute, "Exec timeout on hook scripts")
+	verbose    = flag.Bool("v", false, "Enable verbose logger output")
 
 	errlog = flag.String("err-log", "", "Path to write the error log to. Defaults to standard error.")
 )
@@ -26,11 +27,17 @@ func init() {
 }
 
 func main() {
-	hServe, err := hookah.NewHookServer(
-		*serverRoot,
+	logger := getLogger(*errlog)
+	options := []hookah.ServerOption{
 		hookah.ServerExecTimeout(*timeout),
-		hookah.ServerErrorLog(getLogger(*errlog)),
-	)
+		hookah.ServerErrorLog(logger),
+	}
+
+	if *verbose {
+		options = append(options, hookah.ServerInfoLog(logger))
+	}
+
+	hServe, err := hookah.NewHookServer(*serverRoot, options...)
 	if err != nil {
 		log.Fatal(err)
 	}
