@@ -12,21 +12,35 @@ import (
 	"regexp"
 	"sync"
 	"time"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 var errsNotDir = errors.New("Given path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
 
+// Logger handles Printf
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
-	Timeout time.Duration
+
+	Timeout  time.Duration
+	ErrorLog Logger
+	InfoLog  Logger
+
 	sync.Mutex
 }
 
+// ServerOption sets an option of the HookServer
+type ServerOption func(*HookServer) error
+
 // NewHookServer instantiates a new HookServer with some basic validation
 // on the root directory
-func NewHookServer(rootdir string, timeout time.Duration) (*HookServer, error) {
+func NewHookServer(rootdir string, options ...ServerOption) (*HookServer, error) {
 	f, err := os.Open(rootdir)
 	if err != nil {
 		return nil, err
@@ -42,10 +56,42 @@ func NewHookServer(rootdir string, timeout time.Duration) (*HookServer, error) {
 		return nil, errsNotDir
 	}
 
-	return &HookServer{
+	server := &HookServer{
 		RootDir: rootdir,
-		Timeout: timeout,
-	}, nil
+	}
+
+	var result *multierror.Error
+
+	for _, option := range options {
+		err := option(server)
+		result = multierror.Append(result, err)
+	}
+
+	return server, result.ErrorOrNil()
+}
+
+// ServerExecTimeout configures the HookServer per-script execution timeout
+func ServerExecTimeout(timeout time.Duration) ServerOption {
+	return func(h *HookServer) error {
+		h.Timeout = timeout
+		return nil
+	}
+}
+
+// ServerErrorLog configures the HookServer error logger
+func ServerErrorLog(log Logger) ServerOption {
+	return func(h *HookServer) error {
+		h.ErrorLog = log
+		return nil
+	}
+}
+
+// ServerInfoLog configures the HookServer info logger
+func ServerInfoLog(log Logger) ServerOption {
+	return func(h *HookServer) error {
+		h.InfoLog = log
+		return nil
+	}
 }
 
 func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -90,23 +136,27 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ghDelivery := r.Header.Get("X-GitHub-Delivery")
+
 	hook := HookExec{
 		RootDir: h.RootDir,
-
-		Owner: login,
-		Repo:  repo,
-
-		Event: ghEvent,
-		Data:  buff,
-
-		HookServer: h,
+		Data:    buff,
+		InfoLog: h.InfoLog,
 	}
 
-	go hook.Exec(h.Timeout)
+	go func() {
+		h.Lock()
+		defer h.Unlock()
+
+		err := hook.Exec(login, repo, ghEvent, h.Timeout, "GITHUB_DELIVERY="+ghDelivery, "GITHUB_EVENT="+ghEvent)
+		if err != nil && h.ErrorLog != nil {
+			h.ErrorLog.Printf("%s/%s:%s - '%s'", login, repo, ghEvent, err)
+		}
+	}()
 }
 
 // HookUserJSON exists because some hooks use Login, some use Name
-// - it's horribly inconsistent
+// - it's horribly inconsistent and a bad flaw on GitHubs part
 type HookUserJSON struct {
 	Login string `json:"login"`
 	Name  string `json:"name"`

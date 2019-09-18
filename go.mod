@@ -1,6 +1,6 @@
 module github.com/donatj/hookah
 
-go 1.5
+go 1.6
 
 require (
 	github.com/donatj/hmacsig v1.0.1

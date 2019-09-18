@@ -2,10 +2,13 @@ package hookah
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -14,85 +17,139 @@ import (
 // HookExec represents a call to a hook
 type HookExec struct {
 	RootDir string
-
-	Owner string
-	Repo  string
-
-	Event string
-	Data  io.ReadSeeker
-
-	HookServer *HookServer
+	Data    io.ReadSeeker
+	InfoLog Logger
 }
 
 // GetPathExecs fetches the executable filenames for the given path
-func (h *HookExec) GetPathExecs() ([]string, error) {
-	path := filepath.Join(h.RootDir, h.Owner, h.Repo, h.Event)
+func (h *HookExec) GetPathExecs(owner, repo, event string) ([]string, []string, error) {
+	outfiles := []string{}
+	outErrHandlers := []string{}
 
+	paths := []string{h.RootDir, owner, repo, event}
+
+	workpath := ""
+	for _, path := range paths {
+		workpath = filepath.Join(workpath, path)
+
+		files, errHandlers, err := pathScan(workpath)
+		if err != nil {
+			return []string{}, []string{}, err
+		}
+		outfiles = append(outfiles, files...)
+		outErrHandlers = append(outErrHandlers, errHandlers...)
+	}
+
+	return outfiles, outErrHandlers, nil
+}
+
+func pathScan(path string) ([]string, []string, error) {
 	files := []string{}
+	errHandlers := []string{}
 
 	fs, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return files, nil
+			return files, errHandlers, nil
 		}
 
-		return files, err
+		return files, errHandlers, err
 	}
 
 	if fs.IsDir() {
 		d, err := os.Open(path)
 		defer d.Close()
 		if err != nil {
-			return files, err
+			return files, errHandlers, err
 		}
 
 		fi, err := d.Readdir(-1)
 		if err != nil {
-			return files, err
+			return files, errHandlers, err
 		}
 
 		for _, fi := range fi {
 			if isExecFile(fi) {
-				// fmt.Println(fi.Name(), fi.Size(), "bytes")
-				files = append(files, filepath.Join(path, fi.Name()))
+				if strings.HasPrefix(fi.Name(), "@@error.") {
+					errHandlers = append(errHandlers, filepath.Join(path, fi.Name()))
+				} else {
+					files = append(files, filepath.Join(path, fi.Name()))
+				}
 			}
 		}
 
 	} else if isExecFile(fs) {
 		// fmt.Println(fs.Name(), fs.Size(), "bytes")
-		files = append(files, filepath.Join(path, fs.Name()))
+		// files = append(files, filepath.Join(path, fs.Name()))
+		// this should be picked up on a different sweep
 	} else {
-		return files, errors.New("bad file mumbo jumbo")
+		return files, errHandlers, errors.New("bad file mumbo jumbo")
 	}
 
-	return files, nil
+	return files, errHandlers, nil
+}
+
+// InfoLogf logs to the info logger if not nil
+func (h *HookExec) InfoLogf(format string, v ...interface{}) {
+	if h.InfoLog != nil {
+		h.InfoLog.Printf(format, v...)
+	}
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(timeout time.Duration) error {
-	files, err := h.GetPathExecs()
+func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ...string) error {
+	files, errHandlers, err := h.GetPathExecs(owner, repo, event)
+
 	if err != nil {
 		return err
 	}
 
-	var result error
-
-	h.HookServer.Lock()
-	defer h.HookServer.Unlock()
+	var result *multierror.Error
 
 	for _, f := range files {
-		err := execFile(f, h, timeout)
-		multierror.Append(result, err)
+		h.InfoLogf("beginning execution of %#v", f)
+
+		err := execFile(f, h.Data, timeout, env...)
+
+		if err != nil {
+			h.InfoLogf("exec error: %s", err)
+
+			for _, e := range errHandlers {
+				h.InfoLogf("beginning error handler execution of %#v", e)
+
+				env2 := append(env, getErrorHandlerEnv(f, err)...)
+				err2 := execFile(e, h.Data, timeout, env2...)
+				result = multierror.Append(result, err2)
+			}
+		}
+		result = multierror.Append(result, err)
 	}
 
-	return result
+	return result.ErrorOrNil()
 }
 
-func execFile(f string, h *HookExec, timeout time.Duration) error {
+func getErrorHandlerEnv(f string, err error) []string {
+	env := []string{
+		"HOOKAH_EXEC_ERROR_FILE=" + f,
+		"HOOKAH_EXEC_ERROR=" + err.Error(),
+	}
+
+	if exiterr, ok := err.(*exec.ExitError); ok {
+		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+			env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status.ExitStatus()))
+		}
+	}
+
+	return env
+}
+
+func execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) error {
 	cmd := exec.Command(f)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	cmd.Env = append(os.Environ(), env...)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -105,8 +162,15 @@ func execFile(f string, h *HookExec, timeout time.Duration) error {
 		return err
 	}
 
-	h.Data.Seek(0, 0)
-	io.Copy(stdin, h.Data)
+	_, err = data.Seek(0, 0)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(stdin, data)
+	if err != nil {
+		return err
+	}
 	stdin.Close()
 
 	timer := time.AfterFunc(timeout, func() {
@@ -116,11 +180,7 @@ func execFile(f string, h *HookExec, timeout time.Duration) error {
 	err = cmd.Wait()
 	timer.Stop()
 
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // todo: base this on OS
