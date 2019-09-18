@@ -1,7 +1,12 @@
 BIN=hookah
 HEAD=$(shell git describe --tags 2> /dev/null  || git rev-parse --short HEAD)
 
-default: test install
+default: setup test install
+
+setup:
+ifeq ($(shell echo $$CI),true)
+	go get -u -v
+endif
 
 test:
 	go test ./...
