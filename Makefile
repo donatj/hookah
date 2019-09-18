@@ -5,7 +5,7 @@ default: setup test install
 
 setup:
 ifeq ($(shell echo $$CI),true)
-	go get -u -v
+	cd cmd/hookah && go get -u -v
 endif
 
 test:
