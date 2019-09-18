@@ -14,7 +14,7 @@ It simply passes the message on to the STDIN of any script.
 
 ### From Source
 
-Building v2 requires Go module support - Go 1.9.7+,1.10.3+, 1.11+ or newer.
+Building v2 requires Go module support, availible in Go 1.9.7+, 1.10.3+, 1.11+ or newer.
 
 ```bash
 go get -u -v github.com/donatj/hookah/v2/cmd/hookah
