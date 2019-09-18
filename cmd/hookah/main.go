@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/donatj/hmacsig"
-	"github.com/donatj/hookah"
+	"github.com/donatj/hookah/v2"
 )
 
 var (
