@@ -6,7 +6,7 @@
 [![GoDoc](https://godoc.org/github.com/donatj/hookah?status.svg)](https://godoc.org/github.com/donatj/hookah)
 [![Build Status](https://travis-ci.org/donatj/hookah.svg?branch=master)](https://travis-ci.org/donatj/hookah)
 
-Hookah is a simple server for GitHub Webhooks that forwards the hooks messsage to any series of scripts, be they PHP, Ruby, Python or even straight up shell.
+Hookah is a simple server for GitHub Webhooks that forwards the hooks message to any series of scripts, be they PHP, Ruby, Python or even straight up shell.
 
 It simply passes the message on to the STDIN of any script.
 
@@ -14,7 +14,7 @@ It simply passes the message on to the STDIN of any script.
 
 ### From Source
 
-Building v2 requires Go module support, availible in Go 1.9.7+, 1.10.3+, 1.11+ or newer.
+Building v2 requires Go module support, available in Go 1.9.7+, 1.10.3+, 1.11+ or newer.
 
 ```bash
 go get -u -v github.com/donatj/hookah/cmd/hookah
@@ -26,11 +26,11 @@ see: [Releases](https://github.com/donatj/hookah/releases).
 
 ## Basic Usage
 
-When receiving a webhook request from GitHub, Hookah checks `{server-root}/{vendor}/{repo}/{X-GitHub-Event}/*` for any ***executable*** scripts, and executes them sequentially passing the JSON payload to it's standard in.
+When receiving a Webhook request from GitHub, Hookah checks `{server-root}/{vendor}/{repo}/{X-GitHub-Event}/*` for any ***executable*** scripts, and executes them sequentially passing the JSON payload to it's standard in.
 
 This allows actual hook scripts to be written in any language you prefer.
 
-For example, a script `server/donatj/hookah/push/log.rb` would be executed every time a "push" event webhook was received from GitHub on the donatj/hookah repo.
+For example, a script `server/donatj/hookah/push/log.rb` would be executed every time a "push" event Webhook was received from GitHub on the donatj/hookah repo.
 
 ## Example Hook Scripts
 
@@ -69,7 +69,7 @@ print_r($data);
 
 ### Note
 
-Don't forget your scripts need to be executable. This means having the executable bit set ala `chmod +x <script filename>`, and having a [shebang](https://en.m.wikipedia.org/wiki/Shebang_(Unix)) poiting to your desired interpreter, i.e. `#!/bin/bash`
+Don't forget your scripts need to be executable. This means having the executable bit set ala `chmod +x <script filename>`, and having a [shebang](https://en.m.wikipedia.org/wiki/Shebang_(Unix)) pointing to your desired interpreter, i.e. `#!/bin/bash`
 
 ## Documentation
 
@@ -89,7 +89,7 @@ Error handlers like normal scripts trigger in order up from the root to the spec
 
 ### Example
 
-Concider the following server filesystem.
+Consider the following server file system.
 
 ```
 ├── @@error.rootlevel.sh
@@ -113,7 +113,7 @@ donatj/hookah/pull_request_review_comment/likes-to-fail.sh
 donatj/hookah/pull_request_review_comment/handle-review.php
 ```
 
-Now let's concider if `likes-to-fail.sh` lives upto it's namesake and returns a non-zero exit code. The execution order then becomes:
+Now let's consider if `likes-to-fail.sh` lives up to it's namesake and returns a non-zero exit code. The execution order then becomes:
 
 ```
 run-for-everything.sh
@@ -125,7 +125,7 @@ donatj/hookah/pull_request_review_comment/likes-to-fail.sh
 donatj/hookah/pull_request_review_comment/handle-review.php
 ```
 
-In contast, imagining `donatj/run-for-donatj-repos.sh` returned a non-zero status, the execution would look as follows:
+In contrast, imagining `donatj/run-for-donatj-repos.sh` returned a non-zero status, the execution would look as follows:
 
 ```
 run-for-everything.sh
