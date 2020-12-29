@@ -26,18 +26,25 @@ func (h *HookExec) GetPathExecs(owner, repo, event string) ([]string, []string, 
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
-	paths := []string{h.RootDir, owner, repo, event}
+	pathSets := [][]string{
+		{h.RootDir, owner, repo, event},
+		{filepath.Join(h.RootDir, "@@"), repo, event},
+		{filepath.Join(h.RootDir, owner, "@@"), event},
+		{filepath.Join(h.RootDir, "@@", "@@"), event},
+	}
 
-	workpath := ""
-	for _, path := range paths {
-		workpath = filepath.Join(workpath, path)
+	for _, paths := range pathSets {
+		workpath := ""
+		for _, path := range paths {
+			workpath = filepath.Join(workpath, path)
 
-		files, errHandlers, err := pathScan(workpath)
-		if err != nil {
-			return []string{}, []string{}, err
+			files, errHandlers, err := pathScan(workpath)
+			if err != nil {
+				return []string{}, []string{}, err
+			}
+			outfiles = append(outfiles, files...)
+			outErrHandlers = append(outErrHandlers, errHandlers...)
 		}
-		outfiles = append(outfiles, files...)
-		outErrHandlers = append(outErrHandlers, errHandlers...)
 	}
 
 	return outfiles, outErrHandlers, nil

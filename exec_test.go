@@ -1,6 +1,7 @@
 package hookah
 
 import (
+	"log"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,19 +15,29 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 		Data:    data,
 	}
 
-	scripts, errhandlers, err := h.GetPathExecs("user", "repo", "pull_request_review_comment")
+	scripts, errhandlers, err := h.GetPathExecs("user", "repo", "event")
 	if err != nil {
 		t.Error(err)
 	}
+
+	log.Printf("%#v", scripts)
 
 	expectedScripts := []string{
 		"testdata/exec-only-test-server/exec.sh",
 		"testdata/exec-only-test-server/user/exec.sh",
 		"testdata/exec-only-test-server/user/repo/exec.sh",
+		"testdata/exec-only-test-server/user/repo/event/exec.sh",
+		"testdata/exec-only-test-server/@@/exec.sh",
+		"testdata/exec-only-test-server/@@/repo/exec.sh",
+		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
+		"testdata/exec-only-test-server/user/@@/exec.sh",
+		"testdata/exec-only-test-server/user/@@/event/exec.sh",
+		"testdata/exec-only-test-server/@@/@@/exec.sh",
+		"testdata/exec-only-test-server/@@/@@/event/exec.sh",
 	}
 
 	if !reflect.DeepEqual(scripts, expectedScripts) {
-		t.Errorf("expected %#v; got %#v", scripts, expectedScripts)
+		t.Errorf("expected %#v; got %#v", expectedScripts, scripts)
 	}
 
 	expectedErrhandlers := []string{
@@ -36,7 +47,7 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(errhandlers, expectedErrhandlers) {
-		t.Errorf("expected %#v; got %#v", errhandlers, expectedErrhandlers)
+		t.Errorf("expected %#v; got %#v", expectedErrhandlers, errhandlers)
 	}
 
 }
