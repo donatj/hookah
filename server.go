@@ -127,14 +127,14 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	login := basicHook.Repository.Owner.GetLogin()
 	repo := basicHook.Repository.Name
-
-	fmt.Fprintf(w, "%s/%s", login, repo)
-
 	if repo == "" || login == "" {
-		http.Error(w, "Failed parsing JSON HTTP Body", http.StatusBadRequest)
-		log.Println(err)
+		msg := "Failed parsing JSON HTTP Body"
+		http.Error(w, msg, http.StatusBadRequest)
+		log.Println(msg)
 		return
 	}
+
+	fmt.Fprintf(w, "%s/%s", login, repo)
 
 	ghDelivery := r.Header.Get("X-GitHub-Delivery")
 
