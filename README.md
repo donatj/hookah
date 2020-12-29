@@ -81,6 +81,8 @@ The server root layout looks like `{server-root}/{vendor}/{repo}/{X-GitHub-Event
 
 Scripts are executed at each level, in order of least specific to most specific. At an individual level, the execution order is **file system specific** and *must not* be depended upon.
 
+A directory at the vendor or repo level named `@@` will behave as a wildcard. As such a file named `server-root/donatj/@@/pull_request_review_comment/script.sh` would execute for all of @donatj's `pull_request_review_comment` events regardless of repo.
+
 ### Error Handling
 
 Error handlers are scripts prefixed with `@@error.` and function similarly to standard scripts. Error handlers however are only triggered when the executiono of a normal script returns a **non-zero** exit code.
@@ -97,6 +99,9 @@ Consider the following server file system.
 └── donatj
     ├── @@error.userlevel.sh
     ├── run-for-donatj-repos.sh
+    ├── @@
+    │   └── pull_request_review_comment
+    │       └── all-of-donatjs-pr-comments.sh
     └── hookah
         └── pull_request_review_comment
             ├── @@error.event-level.sh
@@ -111,6 +116,7 @@ run-for-everything.sh
 donatj/run-for-donatj-repos.sh
 donatj/hookah/pull_request_review_comment/likes-to-fail.sh
 donatj/hookah/pull_request_review_comment/handle-review.php
+donatj/@@/pull_request_review_comment/all-of-donatjs-pr-comments.sh
 ```
 
 Now let's consider if `likes-to-fail.sh` lives up to it's namesake and returns a non-zero exit code. The execution order then becomes:
@@ -123,6 +129,7 @@ donatj/hookah/pull_request_review_comment/likes-to-fail.sh
 @@error.userlevel.sh
 @@error.event-level.sh
 donatj/hookah/pull_request_review_comment/handle-review.php
+donatj/@@/pull_request_review_comment/all-of-donatjs-pr-comments.sh
 ```
 
 In contrast, imagining `donatj/run-for-donatj-repos.sh` returned a non-zero status, the execution would look as follows:
@@ -134,6 +141,7 @@ donatj/run-for-donatj-repos.sh
 @@error.userlevel.sh
 donatj/hookah/pull_request_review_comment/likes-to-fail.sh
 donatj/hookah/pull_request_review_comment/handle-review.php
+donatj/@@/pull_request_review_comment/all-of-donatjs-pr-comments.sh
 ```
 
 ### Environment Reference
