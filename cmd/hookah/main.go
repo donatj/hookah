@@ -44,7 +44,7 @@ func main() {
 
 	var serve http.Handler = hServe
 	if *secret != "" {
-		serve = hmacsig.Handler(hServe, *secret)
+		serve = hmacsig.Handler256(hServe, *secret)
 	}
 
 	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), serve)
