@@ -116,7 +116,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println(err)
+		log.Println(ghDelivery, err)
 		return
 	}
 	buff := bytes.NewReader(b)
@@ -127,7 +127,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = decoder.Decode(basicHook)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println(err)
+		log.Println(ghDelivery, err)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if repo == "" || login == "" {
 		msg := "Failed parsing JSON HTTP Body"
 		http.Error(w, msg, http.StatusBadRequest)
-		log.Println(msg)
+		log.Println(ghDelivery, msg)
 		return
 	}
 
@@ -154,7 +154,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		err := hook.Exec(login, repo, ghEvent, h.Timeout, "GITHUB_DELIVERY="+ghDelivery, "GITHUB_EVENT="+ghEvent)
 		if err != nil && h.ErrorLog != nil {
-			h.ErrorLog.Printf("%s/%s:%s - '%s'", login, repo, ghEvent, err)
+			h.ErrorLog.Printf("%s - %s/%s:%s - '%s'", ghDelivery, login, repo, ghEvent, err)
 		}
 	}()
 }
