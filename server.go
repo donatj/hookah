@@ -107,6 +107,12 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ghDelivery := r.Header.Get("X-GitHub-Delivery")
+	if ghDelivery == "" {
+		http.Error(w, "Request requires valid X-GitHub-Delivery", http.StatusBadRequest)
+		return
+	}
+
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -135,8 +141,6 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
-
-	ghDelivery := r.Header.Get("X-GitHub-Delivery")
 
 	hook := HookExec{
 		RootDir: h.RootDir,
