@@ -15,7 +15,7 @@ import (
 var (
 	httpPort   = flag.Uint("http-port", 8080, "HTTP port to listen on")
 	serverRoot = flag.String("server-root", ".", "The root directory of the hook script hierarchy")
-	secret     = flag.String("secret", "", "Optional Github HMAC secret key")
+	secret     = flag.String("secret", "", "Optional GitHub HMAC secret key")
 	timeout    = flag.Duration("timeout", 10*time.Minute, "Exec timeout on hook scripts")
 	verbose    = flag.Bool("v", false, "Enable verbose logger output")
 
