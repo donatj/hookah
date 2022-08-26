@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"log"
 	"net/http"
@@ -21,6 +22,9 @@ var (
 
 	errlog = flag.String("err-log", "", "Path to write the error log to. Defaults to standard error.")
 )
+
+//go:embed favicon.ico
+var favicon []byte
 
 func init() {
 	flag.Parse()
@@ -47,7 +51,13 @@ func main() {
 		serve = hmacsig.Handler256(hServe, *secret)
 	}
 
-	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), serve)
+	mux := http.NewServeMux()
+	mux.Handle("/", serve)
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Write(favicon)
+	})
+	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), mux)
 	if err != nil {
 		log.Fatal(err)
 	}
