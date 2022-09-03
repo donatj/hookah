@@ -17,7 +17,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-var ErrPathIsNotDir = errors.New("given path is not a dir")
+var ErrPathIsNotDir = errors.New("path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
 
 // Logger handles Printf
