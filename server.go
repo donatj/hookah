@@ -146,6 +146,8 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	action := basicHook.Action
+
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
 	hook := HookExec{
@@ -158,7 +160,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		err := hook.Exec(login, repo, ghEvent, h.Timeout,
+		err := hook.Exec(login, repo, ghEvent, action, h.Timeout,
 			"GITHUB_DELIVERY="+ghDelivery,
 			"GITHUB_EVENT="+ghEvent,
 			"HOOKAH_SERVER_ROOT="+h.RootDir,
@@ -187,6 +189,7 @@ func (h *HookUserJSON) GetLogin() string {
 
 // HookJSON represents the minimum body we need to parse
 type HookJSON struct {
+	Action     string `json:"action,omitempty"`
 	Repository struct {
 		Name  string       `json:"name"`
 		Owner HookUserJSON `json:"owner"`

@@ -25,15 +25,25 @@ type HookExec struct {
 }
 
 // GetPathExecs fetches the executable filenames for the given path
-func (h *HookExec) GetPathExecs(owner, repo, event string) ([]string, []string, error) {
+func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []string, error) {
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
-	pathSets := [][]string{
-		{h.RootDir, owner, repo, event},
-		{filepath.Join(h.RootDir, "@@"), repo, event},
-		{filepath.Join(h.RootDir, owner, "@@"), event},
-		{filepath.Join(h.RootDir, "@@", "@@"), event},
+	var pathSets [][]string
+	if action == "" {
+		pathSets = [][]string{
+			{h.RootDir, owner, repo, event},
+			{filepath.Join(h.RootDir, "@@"), repo, event},
+			{filepath.Join(h.RootDir, owner, "@@"), event},
+			{filepath.Join(h.RootDir, "@@", "@@"), event},
+		}
+	} else {
+		pathSets = [][]string{
+			{h.RootDir, owner, repo, event, action},
+			{filepath.Join(h.RootDir, "@@"), repo, event, action},
+			{filepath.Join(h.RootDir, owner, "@@"), event, action},
+			{filepath.Join(h.RootDir, "@@", "@@"), event, action},
+		}
 	}
 
 	for _, paths := range pathSets {
@@ -107,8 +117,8 @@ func (h *HookExec) InfoLogf(format string, v ...interface{}) {
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ...string) error {
-	files, errHandlers, err := h.GetPathExecs(owner, repo, event)
+func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration, env ...string) error {
+	files, errHandlers, err := h.GetPathExecs(owner, repo, event, action)
 
 	if err != nil {
 		return err
