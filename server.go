@@ -163,7 +163,10 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		err := hook.Exec(login, repo, ghEvent, action, h.Timeout,
 			"GITHUB_DELIVERY="+ghDelivery,
+			"GITHUB_LOGIN="+login,
+			"GITHUB_REPO="+repo,
 			"GITHUB_EVENT="+ghEvent,
+			"GITHUB_ACTION="+action,
 			"HOOKAH_SERVER_ROOT="+h.RootDir,
 		)
 		if err != nil && h.ErrorLog != nil {
