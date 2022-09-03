@@ -116,6 +116,12 @@ func (h *HookExec) InfoLogf(format string, v ...any) {
 	}
 }
 
+func (h *HookExec) InfoLogln(msg string) {
+	if h.InfoLog != nil {
+		h.InfoLog.Println(msg)
+	}
+}
+
 // Exec triggers the execution of all scripts associated with the given Hook
 func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration, env ...string) error {
 	files, errHandlers, err := h.GetPathExecs(owner, repo, event, action)
@@ -124,8 +130,13 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 		return err
 	}
 
-	var result *multierror.Error
+	if len(files) > 0 {
+		msg := fmt.Sprintf("executing hook scripts (%d) for %s/%s %s.%s", len(files), owner, repo, event, action)
+		msg = strings.TrimRight(msg, ".")
+		h.InfoLogln(msg)
+	}
 
+	var result *multierror.Error
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 
