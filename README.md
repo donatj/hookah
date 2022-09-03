@@ -14,10 +14,10 @@ It simply passes the message on to the STDIN of any script.
 
 ### From Source
 
-Building v2 requires Go module support, available in Go 1.9.7+, 1.10.3+, 1.11+ or newer.
+Building v3 requires Go 1.19+
 
 ```bash
-go install github.com/donatj/hookah/v2/cmd/hookah@latest
+go install github.com/donatj/hookah/v3/cmd/hookah@latest
 ```
 
 ### From Binary
