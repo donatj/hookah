@@ -141,7 +141,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	login := basicHook.Repository.Owner.GetLogin()
 	repo := basicHook.Repository.Name
 	if repo == "" || login == "" {
-		msg := "Failed parsing JSON HTTP Body"
+		msg := "Unexpected JSON HTTP Body"
 		http.Error(w, msg, http.StatusBadRequest)
 		log.Println(ghDelivery, msg)
 		return
