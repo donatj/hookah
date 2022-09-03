@@ -22,7 +22,8 @@ var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
 
 // Logger handles Printf
 type Logger interface {
-	Printf(format string, v ...interface{})
+	Printf(format string, v ...any)
+	Println(v ...any)
 }
 
 // HookServer implements net/http.Handler

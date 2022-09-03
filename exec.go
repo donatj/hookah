@@ -110,7 +110,7 @@ func pathScan(path string) ([]string, []string, error) {
 }
 
 // InfoLogf logs to the info logger if not nil
-func (h *HookExec) InfoLogf(format string, v ...interface{}) {
+func (h *HookExec) InfoLogf(format string, v ...any) {
 	if h.InfoLog != nil {
 		h.InfoLog.Printf(format, v...)
 	}
