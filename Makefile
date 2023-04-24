@@ -20,12 +20,16 @@ clean:
 	mkdir release
 
 .PHONY: release
-release: clean darwin64 linux64
-	cd release/darwin64 && zip -9 ../$(BIN).darwin64.$(HEAD).zip $(BIN)
-	cd release/linux64 && zip -9 ../$(BIN).linux64.$(HEAD).zip $(BIN)
+release: clean release/darwin_amd64 release/darwin_arm64 release/linux_amd64
+	cd release/darwin_amd64 && zip -9 ../$(BIN).darwin_amd64.$(HEAD).zip $(BIN)
+	cd release/darwin_arm64 && zip -9 ../$(BIN).darwin_arm64.$(HEAD).zip $(BIN)
+	cd release/linux_amd64 && zip -9 ../$(BIN).linux_amd64.$(HEAD).zip $(BIN)
 
-darwin64:
-	env GOOS=darwin GOARCH=amd64 go build -o release/darwin64/$(BIN) ./cmd/hookah
+release/darwin_amd64:
+	env GOOS=darwin GOARCH=amd64 go build -o release/darwin_amd64/$(BIN) ./cmd/hookah
 
-linux64:
-	env GOOS=linux GOARCH=amd64 go build -o release/linux64/$(BIN) ./cmd/hookah
+release/darwin_arm64:
+	env GOOS=darwin GOARCH=arm64 go build -o release/darwin_arm64/$(BIN) ./cmd/hookah
+
+release/linux_amd64:
+	env GOOS=linux GOARCH=amd64 go build -o release/linux_amd64/$(BIN) ./cmd/hookah
