@@ -17,7 +17,7 @@ import (
 )
 
 var errsNotDir = errors.New("Given path is not a dir")
-var validGhEvent = regexp.MustCompile(`^[a-z_]{1,30}$`)
+var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
 
 // Logger handles Printf
 type Logger interface {
