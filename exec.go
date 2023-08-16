@@ -19,6 +19,9 @@ type HookExec struct {
 	RootDir string
 	Data    io.ReadSeeker
 	InfoLog Logger
+
+	Stdout io.Writer
+	Stderr io.Writer
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -116,7 +119,7 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ..
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 
-		err := execFile(f, h.Data, timeout, env...)
+		err := h.execFile(f, h.Data, timeout, env...)
 
 		if err != nil {
 			h.InfoLogf("exec error: %s", err)
@@ -125,7 +128,7 @@ func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ..
 				h.InfoLogf("beginning error handler execution of %#v", e)
 
 				env2 := append(env, getErrorHandlerEnv(f, err)...)
-				err2 := execFile(e, h.Data, timeout, env2...)
+				err2 := h.execFile(e, h.Data, timeout, env2...)
 				result = multierror.Append(result, err2)
 			}
 		}
@@ -150,11 +153,20 @@ func getErrorHandlerEnv(f string, err error) []string {
 	return env
 }
 
-func execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) error {
+func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) error {
 	cmd := exec.Command(f)
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if h.Stdout != nil {
+		cmd.Stdout = h.Stdout
+	} else {
+		cmd.Stdout = os.Stdout
+	}
+
+	if h.Stderr != nil {
+		cmd.Stderr = h.Stderr
+	} else {
+		cmd.Stderr = os.Stderr
+	}
 
 	cmd.Env = append(os.Environ(), env...)
 

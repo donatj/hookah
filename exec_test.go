@@ -1,10 +1,12 @@
 package hookah
 
 import (
+	"bytes"
 	"log"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestOnlyExecutableBinsFound(t *testing.T) {
@@ -48,6 +50,46 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 
 	if !reflect.DeepEqual(errhandlers, expectedErrhandlers) {
 		t.Errorf("expected %#v; got %#v", expectedErrhandlers, errhandlers)
+	}
+
+}
+
+func TestEnvPopulatedCorrectly(t *testing.T) {
+
+	out := &bytes.Buffer{}
+
+	data := strings.NewReader(`{"foo": "bar"}`)
+
+	h := HookExec{
+		RootDir: "./testdata/env-test-server",
+		Data:    data,
+
+		Stdout: out,
+	}
+
+	err := h.Exec("user", "repo", "event", 1*time.Minute, "FOO=BAR", "BAZ=QUX")
+	if err != nil {
+		t.Error(err)
+	}
+
+	env := out.String()
+	lines := strings.Split(strings.TrimSpace(env), "\n")
+	envMap := make(map[string]string, len(lines))
+
+	for _, line := range lines {
+		parts := strings.SplitN(line, "=", 2)
+		envMap[parts[0]] = parts[1]
+	}
+
+	expectedEnv := map[string]string{
+		"FOO": "BAR",
+		"BAZ": "QUX",
+	}
+
+	for k, expectedV := range expectedEnv {
+		if actualV, ok := envMap[k]; !ok || actualV != expectedV {
+			t.Error("expected", k, "to be", expectedV, "got", actualV)
+		}
 	}
 
 }
