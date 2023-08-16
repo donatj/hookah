@@ -152,6 +152,14 @@ donatj/@@/pull_request_review_comment/all-of-donatjs-pr-comments.sh
 
 `GITHUB_DELIVERY` : The contents of the `X-GitHub-Delivery` header. A Unique ID for the Given Request
 
+`GITHUB_LOGIN` : The GitHub login of the owner of the repository.
+
+`GITHUB_REPO` : The name portion of the repository, e.g. `hookah`.
+
+`GITHUB_ACTION` : The action of the event, e.g. `opened`.
+
+`HOOKAH_SERVER_ROOT` : The absolute path of the root directory of the hookah server.
+
 #### Error Handler Executions
 
 `HOOKAH_EXEC_ERROR_FILE` : The path to the executable that failed to execute.
