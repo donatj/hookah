@@ -1,4 +1,4 @@
-module github.com/donatj/hookah/v2
+module github.com/donatj/hookah/v3
 
 go 1.19
 

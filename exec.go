@@ -25,15 +25,25 @@ type HookExec struct {
 }
 
 // GetPathExecs fetches the executable filenames for the given path
-func (h *HookExec) GetPathExecs(owner, repo, event string) ([]string, []string, error) {
+func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []string, error) {
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
-	pathSets := [][]string{
-		{h.RootDir, owner, repo, event},
-		{filepath.Join(h.RootDir, "@@"), repo, event},
-		{filepath.Join(h.RootDir, owner, "@@"), event},
-		{filepath.Join(h.RootDir, "@@", "@@"), event},
+	var pathSets [][]string
+	if action == "" {
+		pathSets = [][]string{
+			{h.RootDir, owner, repo, event},
+			{filepath.Join(h.RootDir, "@@"), repo, event},
+			{filepath.Join(h.RootDir, owner, "@@"), event},
+			{filepath.Join(h.RootDir, "@@", "@@"), event},
+		}
+	} else {
+		pathSets = [][]string{
+			{h.RootDir, owner, repo, event, action},
+			{filepath.Join(h.RootDir, "@@"), repo, event, action},
+			{filepath.Join(h.RootDir, owner, "@@"), event, action},
+			{filepath.Join(h.RootDir, "@@", "@@"), event, action},
+		}
 	}
 
 	for _, paths := range pathSets {
@@ -100,22 +110,33 @@ func pathScan(path string) ([]string, []string, error) {
 }
 
 // InfoLogf logs to the info logger if not nil
-func (h *HookExec) InfoLogf(format string, v ...interface{}) {
+func (h *HookExec) InfoLogf(format string, v ...any) {
 	if h.InfoLog != nil {
 		h.InfoLog.Printf(format, v...)
 	}
 }
 
+func (h *HookExec) InfoLogln(msg string) {
+	if h.InfoLog != nil {
+		h.InfoLog.Println(msg)
+	}
+}
+
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(owner, repo, event string, timeout time.Duration, env ...string) error {
-	files, errHandlers, err := h.GetPathExecs(owner, repo, event)
+func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration, env ...string) error {
+	files, errHandlers, err := h.GetPathExecs(owner, repo, event, action)
 
 	if err != nil {
 		return err
 	}
 
-	var result *multierror.Error
+	if len(files) > 0 {
+		msg := fmt.Sprintf("executing hook scripts (%d) for %s/%s %s.%s", len(files), owner, repo, event, action)
+		msg = strings.TrimRight(msg, ".")
+		h.InfoLogln(msg)
+	}
 
+	var result *multierror.Error
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 

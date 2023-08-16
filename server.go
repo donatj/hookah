@@ -17,12 +17,13 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-var ErrPathIsNotDir = errors.New("given path is not a dir")
+var ErrPathIsNotDir = errors.New("path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
 
 // Logger handles Printf
 type Logger interface {
-	Printf(format string, v ...interface{})
+	Printf(format string, v ...any)
+	Println(v ...any)
 }
 
 // HookServer implements net/http.Handler
@@ -140,11 +141,13 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	login := basicHook.Repository.Owner.GetLogin()
 	repo := basicHook.Repository.Name
 	if repo == "" || login == "" {
-		msg := "Failed parsing JSON HTTP Body"
+		msg := "Unexpected JSON HTTP Body"
 		http.Error(w, msg, http.StatusBadRequest)
 		log.Println(ghDelivery, msg)
 		return
 	}
+
+	action := basicHook.Action
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
@@ -158,9 +161,12 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		err := hook.Exec(login, repo, ghEvent, h.Timeout,
+		err := hook.Exec(login, repo, ghEvent, action, h.Timeout,
 			"GITHUB_DELIVERY="+ghDelivery,
+			"GITHUB_LOGIN="+login,
+			"GITHUB_REPO="+repo,
 			"GITHUB_EVENT="+ghEvent,
+			"GITHUB_ACTION="+action,
 			"HOOKAH_SERVER_ROOT="+h.RootDir,
 		)
 		if err != nil && h.ErrorLog != nil {
@@ -187,6 +193,7 @@ func (h *HookUserJSON) GetLogin() string {
 
 // HookJSON represents the minimum body we need to parse
 type HookJSON struct {
+	Action     string `json:"action,omitempty"`
 	Repository struct {
 		Name  string       `json:"name"`
 		Owner HookUserJSON `json:"owner"`

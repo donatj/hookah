@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/donatj/hmacsig"
-	"github.com/donatj/hookah/v2"
+	"github.com/donatj/hookah/v3"
 )
 
 var (
@@ -58,7 +58,7 @@ func main() {
 		w.Write(favicon)
 	})
 
-	log.Println("listening on port", *httpPort)
+	logger.Println("listening on port", *httpPort)
 	err = http.ListenAndServe(":"+strconv.Itoa(int(*httpPort)), mux)
 	if err != nil {
 		log.Fatal(err)
