@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sync"
 	"time"
@@ -16,7 +17,7 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-var errsNotDir = errors.New("Given path is not a dir")
+var ErrPathIsNotDir = errors.New("given path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
 
 // Logger handles Printf
@@ -40,8 +41,13 @@ type ServerOption func(*HookServer) error
 
 // NewHookServer instantiates a new HookServer with some basic validation
 // on the root directory
-func NewHookServer(rootdir string, options ...ServerOption) (*HookServer, error) {
-	f, err := os.Open(rootdir)
+func NewHookServer(rootDir string, options ...ServerOption) (*HookServer, error) {
+	absRootDir, err := filepath.Abs(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed converting server-root '%s' to an absolute path: %w", rootDir, err)
+	}
+
+	f, err := os.Open(absRootDir)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +59,11 @@ func NewHookServer(rootdir string, options ...ServerOption) (*HookServer, error)
 	}
 
 	if !fi.IsDir() {
-		return nil, errsNotDir
+		return nil, ErrPathIsNotDir
 	}
 
 	server := &HookServer{
-		RootDir: rootdir,
+		RootDir: absRootDir,
 	}
 
 	var result *multierror.Error
@@ -152,7 +158,11 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		err := hook.Exec(login, repo, ghEvent, h.Timeout, "GITHUB_DELIVERY="+ghDelivery, "GITHUB_EVENT="+ghEvent)
+		err := hook.Exec(login, repo, ghEvent, h.Timeout,
+			"GITHUB_DELIVERY="+ghDelivery,
+			"GITHUB_EVENT="+ghEvent,
+			"HOOKAH_SERVER_ROOT="+h.RootDir,
+		)
 		if err != nil && h.ErrorLog != nil {
 			h.ErrorLog.Printf("%s - %s/%s:%s - '%s'", ghDelivery, login, repo, ghEvent, err)
 		}
