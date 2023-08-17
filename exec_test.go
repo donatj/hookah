@@ -13,9 +13,11 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 
 	expectedScripts := []string{
 		"testdata/exec-only-test-server/exec.sh",
+		"testdata/exec-only-test-server/exec-symlink.sh",
 		"testdata/exec-only-test-server/user/exec.sh",
 		"testdata/exec-only-test-server/user/repo/exec.sh",
 		"testdata/exec-only-test-server/user/repo/event/exec.sh",
+		"testdata/exec-only-test-server/@@/exec-symlink-symlink.sh",
 		"testdata/exec-only-test-server/@@/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
@@ -56,11 +58,14 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 
 func TestActionDirectoriesWorkAsExpected(t *testing.T) {
 
-	expectedScripts := []string{"testdata/exec-only-test-server/exec.sh",
+	expectedScripts := []string{
+		"testdata/exec-only-test-server/exec.sh",
+		"testdata/exec-only-test-server/exec-symlink.sh",
 		"testdata/exec-only-test-server/user/exec.sh",
 		"testdata/exec-only-test-server/user/repo/exec.sh",
 		"testdata/exec-only-test-server/user/repo/event/exec.sh",
 		"testdata/exec-only-test-server/user/repo/event/action/exec.sh",
+		"testdata/exec-only-test-server/@@/exec-symlink-symlink.sh",
 		"testdata/exec-only-test-server/@@/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
