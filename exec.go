@@ -63,6 +63,9 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 	return outfiles, outErrHandlers, nil
 }
 
+// pathScan scans the given path for executable files
+// returns a list of files and a list of error handlers
+// error handlers are files that start with @@error.
 func pathScan(path string) ([]string, []string, error) {
 	files := []string{}
 	errHandlers := []string{}
@@ -89,7 +92,13 @@ func pathScan(path string) ([]string, []string, error) {
 		}
 
 		for _, fi := range fi {
-			if isExecFile(fi) {
+			fpath := filepath.Join(path, fi.Name())
+			is, err := isExecFile(fpath)
+			if err != nil {
+				return files, errHandlers, err
+			}
+
+			if is {
 				if strings.HasPrefix(fi.Name(), "@@error.") {
 					errHandlers = append(errHandlers, filepath.Join(path, fi.Name()))
 				} else {
@@ -98,7 +107,7 @@ func pathScan(path string) ([]string, []string, error) {
 			}
 		}
 
-	} else if isExecFile(fs) {
+	} else if is, _ := isExecFile(path); is {
 		// fmt.Println(fs.Name(), fs.Size(), "bytes")
 		// files = append(files, filepath.Join(path, fs.Name()))
 		// this should be picked up on a different sweep
@@ -224,6 +233,40 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 }
 
 // todo: base this on OS
-func isExecFile(fi os.FileInfo) bool {
-	return fi.Mode().IsRegular() && fi.Mode()|0111 == fi.Mode()
+func isExecFile(fss ...string) (bool, error) {
+	if len(fss) > 10 {
+		paths := []string{}
+		for _, f := range fss {
+			paths = append(paths, f)
+		}
+
+		return false, fmt.Errorf("maximum symlink depth exceeded: %s", strings.Join(paths, " -> "))
+	}
+
+	if len(fss) == 0 {
+		return false, errors.New("no file info provided")
+	}
+
+	fs := fss[len(fss)-1]
+	fi, err := os.Stat(fs)
+	if err != nil {
+		return false, err
+	}
+
+	mode := fi.Mode()
+	if mode.IsRegular() && mode|0111 == mode {
+		return true, nil
+	}
+
+	if mode&os.ModeSymlink != 0 {
+		link, err := os.Readlink(fi.Name())
+		if err != nil {
+			return false, err
+		}
+
+		fss = append(fss, link)
+		return isExecFile(fss...)
+	}
+
+	return false, nil
 }
