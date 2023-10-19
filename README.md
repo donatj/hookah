@@ -4,7 +4,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/donatj/hookah/v3)](https://goreportcard.com/report/github.com/donatj/hookah/v3)
 [![GoDoc](https://godoc.org/github.com/donatj/hookah/v3?status.svg)](https://godoc.org/github.com/donatj/hookah/v3)
-![CI](https://github.com/donatj/hookah/workflows/CI/badge.svg)
+[![CI](https://github.com/donatj/hookah/actions/workflows/ci.yml/badge.svg)](https://github.com/donatj/hookah/actions/workflows/ci.yml)
 
 Hookah is a simple server for GitHub Webhooks that forwards the hooks message to any series of scripts, be they PHP, Ruby, Python or even straight up shell.
 
