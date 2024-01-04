@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -90,6 +91,8 @@ func pathScan(path string) ([]string, []string, error) {
 		if err != nil {
 			return files, errHandlers, err
 		}
+		// I don't think this is necessary but it makes the tests deterministic
+		sort.Slice(fi, func(i, j int) bool { return fi[i].Name() < fi[j].Name() })
 
 		for _, fi := range fi {
 			fpath := filepath.Join(path, fi.Name())

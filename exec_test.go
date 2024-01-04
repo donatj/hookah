@@ -3,22 +3,23 @@ package hookah
 import (
 	"bytes"
 	"log"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOnlyExecutableBinsFound(t *testing.T) {
 
 	expectedScripts := []string{
 		"testdata/exec-only-test-server/exec.sh",
-		"testdata/exec-only-test-server/exec-symlink.sh",
+		"testdata/exec-only-test-server/exec.symlink.sh",
 		"testdata/exec-only-test-server/user/exec.sh",
 		"testdata/exec-only-test-server/user/repo/exec.sh",
 		"testdata/exec-only-test-server/user/repo/event/exec.sh",
-		"testdata/exec-only-test-server/@@/exec-symlink-symlink.sh",
 		"testdata/exec-only-test-server/@@/exec.sh",
+		"testdata/exec-only-test-server/@@/exec.symlink.symlink.sh",
 		"testdata/exec-only-test-server/@@/repo/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
 		"testdata/exec-only-test-server/user/@@/exec.sh",
@@ -43,30 +44,27 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 	scripts, errhandlers, err := h.GetPathExecs("user", "repo", "event", "")
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	log.Printf("%#v", scripts)
 
-	if !reflect.DeepEqual(scripts, expectedScripts) {
-		t.Errorf("expected\n%#v\n\ngot\n%#v", expectedScripts, scripts)
-	}
+	assert.EqualValues(t, expectedScripts, scripts)
 
-	if !reflect.DeepEqual(errhandlers, expectedErrhandlers) {
-		t.Errorf("expected\n%#v\n\ngot\n%#v", expectedErrhandlers, errhandlers)
-	}
+	assert.EqualValues(t, expectedErrhandlers, errhandlers)
 }
 
 func TestActionDirectoriesWorkAsExpected(t *testing.T) {
 
 	expectedScripts := []string{
 		"testdata/exec-only-test-server/exec.sh",
-		"testdata/exec-only-test-server/exec-symlink.sh",
+		"testdata/exec-only-test-server/exec.symlink.sh",
 		"testdata/exec-only-test-server/user/exec.sh",
 		"testdata/exec-only-test-server/user/repo/exec.sh",
 		"testdata/exec-only-test-server/user/repo/event/exec.sh",
 		"testdata/exec-only-test-server/user/repo/event/action/exec.sh",
-		"testdata/exec-only-test-server/@@/exec-symlink-symlink.sh",
 		"testdata/exec-only-test-server/@@/exec.sh",
+		"testdata/exec-only-test-server/@@/exec.symlink.symlink.sh",
 		"testdata/exec-only-test-server/@@/repo/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
 		"testdata/exec-only-test-server/@@/repo/event/action/exec.sh",
@@ -97,17 +95,14 @@ func TestActionDirectoriesWorkAsExpected(t *testing.T) {
 	scripts, errhandlers, err := h.GetPathExecs("user", "repo", "event", "action")
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	log.Printf("%#v", scripts)
 
-	if !reflect.DeepEqual(scripts, expectedScripts) {
-		t.Errorf("expected\n%#v\n\ngot\n%#v", expectedScripts, scripts)
-	}
+	assert.EqualValues(t, expectedScripts, scripts)
 
-	if !reflect.DeepEqual(errhandlers, expectedErrhandlers) {
-		t.Errorf("expected\n%#v\n\ngot\n%#v", expectedErrhandlers, errhandlers)
-	}
+	assert.EqualValues(t, expectedErrhandlers, errhandlers)
 }
 
 func TestEnvPopulatedCorrectly(t *testing.T) {
