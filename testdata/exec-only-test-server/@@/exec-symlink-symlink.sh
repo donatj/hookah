@@ -1,1 +1,0 @@
-../exec-symlink.sh
