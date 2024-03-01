@@ -7,7 +7,7 @@ toolchain go1.21.4
 require (
 	github.com/donatj/hmacsig v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
