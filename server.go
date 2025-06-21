@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,19 +20,13 @@ import (
 var ErrPathIsNotDir = errors.New("path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
 
-// Logger handles Printf
-type Logger interface {
-	Printf(format string, v ...any)
-	Println(v ...any)
-}
-
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
 
 	Timeout  time.Duration
-	ErrorLog Logger
-	InfoLog  Logger
+	ErrorLog *slog.Logger
+	InfoLog  *slog.Logger
 
 	sync.Mutex
 }
@@ -86,7 +80,7 @@ func ServerExecTimeout(timeout time.Duration) ServerOption {
 }
 
 // ServerErrorLog configures the HookServer error logger
-func ServerErrorLog(log Logger) ServerOption {
+func ServerErrorLog(log *slog.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.ErrorLog = log
 		return nil
@@ -94,7 +88,7 @@ func ServerErrorLog(log Logger) ServerOption {
 }
 
 // ServerInfoLog configures the HookServer info logger
-func ServerInfoLog(log Logger) ServerOption {
+func ServerInfoLog(log *slog.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.InfoLog = log
 		return nil
@@ -123,7 +117,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println(ghDelivery, err)
+		slog.Info("request error", "delivery", ghDelivery, "error", err)
 		return
 	}
 	buff := bytes.NewReader(b)
@@ -134,7 +128,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = decoder.Decode(basicHook)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println(ghDelivery, err)
+		slog.Info("json decode error", "delivery", ghDelivery, "error", err)
 		return
 	}
 
@@ -143,7 +137,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if repo == "" || login == "" {
 		msg := "Unexpected JSON HTTP Body"
 		http.Error(w, msg, http.StatusBadRequest)
-		log.Println(ghDelivery, msg)
+		slog.Info("invalid request body", "delivery", ghDelivery, "message", msg)
 		return
 	}
 
@@ -170,7 +164,12 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"HOOKAH_SERVER_ROOT="+h.RootDir,
 		)
 		if err != nil && h.ErrorLog != nil {
-			h.ErrorLog.Printf("%s - %s/%s:%s - '%s'", ghDelivery, login, repo, ghEvent, err)
+			h.ErrorLog.Error("hook execution error", 
+				"delivery", ghDelivery, 
+				"login", login, 
+				"repo", repo, 
+				"event", ghEvent, 
+				"error", err)
 		}
 	}()
 }
