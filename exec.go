@@ -65,8 +65,8 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 }
 
 // pathScan scans the given path for executable files
-// returns a list of files and a list of error handlers
-// error handlers are files that start with @@error.
+// returns a list of files and a list of error handlers.
+// Error handlers are files that start with @@error.
 func pathScan(path string) ([]string, []string, error) {
 	files := []string{}
 	errHandlers := []string{}
