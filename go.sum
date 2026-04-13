@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/donatj/hmacsig v1.1.0 h1:DbBIW1ZTMfJoJhDGPVpkatYyxhrR2xVoHAokPTrlw50=
-github.com/donatj/hmacsig v1.1.0/go.mod h1:rh/7q72Fo5oYc7bcKgvGHWsfHcs8jKhJdFgCZcvZ/G0=
+github.com/donatj/hmacsig v1.2.0 h1:i+/OmRB1h5fjRJTgiljh4cqOotvv82L7U4SZt08ffSQ=
+github.com/donatj/hmacsig v1.2.0/go.mod h1:GVWEmSdkSPOVm1cCbqzuNEjeFGPrAFeNeRLHN5mTTqU=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
 github.com/hashicorp/errwrap v1.1.0 h1:OxrOeh75EUXMY8TBjag2fzXGZ40LB6IKw45YeGUDY2I=
 github.com/hashicorp/errwrap v1.1.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
