@@ -236,14 +236,7 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 			waitErr = fmt.Errorf("hook timed out after %s: %w", timeout, waitErr)
 		}
 
-		switch {
-		case err == nil:
-			err = waitErr
-		case waitErr == nil:
-			// keep err unchanged; preserve original error type
-		default:
-			err = multierror.Append(err, waitErr).ErrorOrNil()
-		}
+		err = multierror.Append(err, waitErr).ErrorOrNil()
 	}()
 
 	if _, err := io.Copy(stdin, data); err != nil {
