@@ -187,6 +187,10 @@ func getErrorHandlerEnv(f string, err error) []string {
 	return env
 }
 
+// execFile executes the hook script at path f with data piped to stdin and the given environment variables.
+// If timeout is greater than zero, the process and its children are killed via process group termination after
+// the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
+// the process to exit, preventing zombie processes.
 func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
 	ctx := context.Background()
 
