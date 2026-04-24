@@ -2,12 +2,16 @@ package hookah
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOnlyExecutableBinsFound(t *testing.T) {
@@ -144,3 +148,70 @@ func TestEnvPopulatedCorrectly(t *testing.T) {
 	}
 
 }
+
+// TestExecFileTimeout verifies that execFile respects the timeout and returns
+// a timeout error without hanging for long-running scripts.
+func TestExecFileTimeout(t *testing.T) {
+	f, err := os.CreateTemp("", "hookah-test-*.sh")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+
+	_, _ = io.WriteString(f, "#!/bin/sh\nsleep 30\n")
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Chmod(f.Name(), 0700))
+
+	h := HookExec{
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+	}
+	data := strings.NewReader(`{}`)
+
+	start := time.Now()
+	err = h.execFile(f.Name(), data, 200*time.Millisecond)
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	assert.Less(t, elapsed, 5*time.Second, "execFile should not hang after timeout")
+	assert.Contains(t, err.Error(), "timed out")
+}
+
+// TestExecFileCopyError verifies that a Read error during stdin copy still allows
+// the child process to be reaped without the call hanging (no zombie processes).
+func TestExecFileCopyError(t *testing.T) {
+	f, err := os.CreateTemp("", "hookah-test-*.sh")
+	require.NoError(t, err)
+	defer os.Remove(f.Name())
+
+	_, _ = io.WriteString(f, "#!/bin/sh\ncat\n")
+	require.NoError(t, f.Close())
+	require.NoError(t, os.Chmod(f.Name(), 0700))
+
+	h := HookExec{
+		Stdout: io.Discard,
+		Stderr: io.Discard,
+	}
+
+	readErr := errors.New("simulated read error")
+	data := &readErrSeeker{readErr: readErr}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- h.execFile(f.Name(), data, 5*time.Second)
+	}()
+
+	select {
+	case err := <-done:
+		assert.ErrorContains(t, err, readErr.Error())
+	case <-time.After(3 * time.Second):
+		t.Fatal("execFile hung waiting for process to be reaped")
+	}
+}
+
+// readErrSeeker is a ReadSeeker whose Seek always succeeds but whose Read always
+// returns the configured error, simulating an io.Copy failure mid-transfer.
+type readErrSeeker struct {
+	readErr error
+}
+
+func (r *readErrSeeker) Seek(_ int64, _ int) (int64, error) { return 0, nil }
+func (r *readErrSeeker) Read(_ []byte) (int, error)         { return 0, r.readErr }
