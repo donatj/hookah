@@ -1,6 +1,7 @@
 package hookah
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -187,7 +188,17 @@ func getErrorHandlerEnv(f string, err error) []string {
 }
 
 func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
-	cmd := exec.Command(f)
+	ctx := context.Background()
+
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		cancel = func() {}
+	}
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, f)
 
 	if h.Stdout != nil {
 		cmd.Stdout = h.Stdout
@@ -207,31 +218,35 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	if err != nil {
 		return err
 	}
-	defer stdin.Close()
 
-	err = cmd.Start()
-	if err != nil {
+	if _, err := data.Seek(0, 0); err != nil {
+		_ = stdin.Close()
 		return err
 	}
+
+	if err := cmd.Start(); err != nil {
+		_ = stdin.Close()
+		return err
+	}
+
 	defer func() {
-		err = multierror.Append(err, cmd.Wait()).ErrorOrNil()
+		waitErr := cmd.Wait()
+
+		if ctx.Err() == context.DeadlineExceeded {
+			waitErr = fmt.Errorf("hook timed out after %s: %w", timeout, waitErr)
+		}
+
+		err = multierror.Append(err, waitErr).ErrorOrNil()
 	}()
 
-	timer := time.AfterFunc(timeout, func() {
-		cmd.Process.Kill()
-	})
-	defer timer.Stop()
-
-	_, err = data.Seek(0, 0)
-	if err != nil {
+	if _, err := io.Copy(stdin, data); err != nil {
+		_ = stdin.Close()
 		return err
 	}
 
-	_, err = io.Copy(stdin, data)
-	if err != nil {
+	if err := stdin.Close(); err != nil {
 		return err
 	}
-	stdin.Close()
 
 	return nil
 }
