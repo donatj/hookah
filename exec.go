@@ -186,7 +186,7 @@ func getErrorHandlerEnv(f string, err error) []string {
 	return env
 }
 
-func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) error {
+func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
 	cmd := exec.Command(f)
 
 	if h.Stdout != nil {
@@ -213,6 +213,14 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	if err != nil {
 		return err
 	}
+	defer func() {
+		err = multierror.Append(err, cmd.Wait()).ErrorOrNil()
+	}()
+
+	timer := time.AfterFunc(timeout, func() {
+		cmd.Process.Kill()
+	})
+	defer timer.Stop()
 
 	_, err = data.Seek(0, 0)
 	if err != nil {
@@ -225,14 +233,7 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	}
 	stdin.Close()
 
-	timer := time.AfterFunc(timeout, func() {
-		cmd.Process.Kill()
-	})
-
-	err = cmd.Wait()
-	timer.Stop()
-
-	return err
+	return nil
 }
 
 // todo: base this on OS
