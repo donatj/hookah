@@ -199,6 +199,7 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, f)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if h.Stdout != nil {
 		cmd.Stdout = h.Stdout
@@ -230,7 +231,21 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	}
 
 	defer func() {
-		waitErr := cmd.Wait()
+		// Monitor context timeout and kill process group if needed
+		done := make(chan error, 1)
+		go func() {
+			done <- cmd.Wait()
+		}()
+
+		var waitErr error
+		select {
+		case waitErr = <-done:
+			// Process finished naturally
+		case <-ctx.Done():
+			// Context timeout - kill the entire process group
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			waitErr = <-done
+		}
 
 		if waitErr != nil && ctx.Err() == context.DeadlineExceeded {
 			waitErr = fmt.Errorf("hook timed out after %s: %w", timeout, waitErr)
