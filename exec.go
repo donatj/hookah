@@ -202,6 +202,9 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {
 		// Kill the entire process group instead of just the parent
+		if cmd.Process == nil {
+			return os.ErrProcessDone
+		}
 		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 
@@ -249,9 +252,8 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 		return err
 	}
 
-	if err := stdin.Close(); err != nil {
-		return err
-	}
+	// Ignore close error - child may exit early without reading all stdin
+	_ = stdin.Close()
 
 	return nil
 }
