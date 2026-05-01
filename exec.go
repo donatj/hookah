@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +20,7 @@ import (
 type HookExec struct {
 	RootDir string
 	Data    io.ReadSeeker
-	InfoLog Logger
+	InfoLog *slog.Logger
 
 	Stdout io.Writer
 	Stderr io.Writer
@@ -65,8 +66,8 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 }
 
 // pathScan scans the given path for executable files
-// returns a list of files and a list of error handlers
-// error handlers are files that start with @@error.
+// returns a list of files and a list of error handlers.
+// Error handlers are files that start with @@error.
 func pathScan(path string) ([]string, []string, error) {
 	files := []string{}
 	errHandlers := []string{}
@@ -124,13 +125,13 @@ func pathScan(path string) ([]string, []string, error) {
 // InfoLogf logs to the info logger if not nil
 func (h *HookExec) InfoLogf(format string, v ...any) {
 	if h.InfoLog != nil {
-		h.InfoLog.Printf(format, v...)
+		h.InfoLog.Info(fmt.Sprintf(format, v...))
 	}
 }
 
 func (h *HookExec) InfoLogln(msg string) {
 	if h.InfoLog != nil {
-		h.InfoLog.Println(msg)
+		h.InfoLog.Info(msg)
 	}
 }
 
