@@ -12,8 +12,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 // HookExec represents a call to a hook
@@ -149,7 +147,7 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 		h.InfoLogln(msg)
 	}
 
-	var result *multierror.Error
+	var errs []error
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 
@@ -163,13 +161,13 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 
 				env2 := append(env, getErrorHandlerEnv(f, err)...)
 				err2 := h.execFile(e, h.Data, timeout, env2...)
-				result = multierror.Append(result, err2)
+				errs = append(errs, err2)
 			}
 		}
-		result = multierror.Append(result, err)
+		errs = append(errs, err)
 	}
 
-	return result.ErrorOrNil()
+	return errors.Join(errs...)
 }
 
 func getErrorHandlerEnv(f string, err error) []string {

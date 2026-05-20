@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
 )
 
 var ErrPathIsNotDir = errors.New("path is not a dir")
@@ -67,14 +66,14 @@ func NewHookServer(rootDir string, options ...ServerOption) (*HookServer, error)
 		RootDir: absRootDir,
 	}
 
-	var result *multierror.Error
+	var errs []error
 
 	for _, option := range options {
 		err := option(server)
-		result = multierror.Append(result, err)
+		errs = append(errs, err)
 	}
 
-	return server, result.ErrorOrNil()
+	return server, errors.Join(errs...)
 }
 
 // ServerExecTimeout configures the HookServer per-script execution timeout
