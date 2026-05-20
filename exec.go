@@ -1,6 +1,7 @@
 package hookah
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -184,8 +185,30 @@ func getErrorHandlerEnv(f string, err error) []string {
 	return env
 }
 
-func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) error {
-	cmd := exec.Command(f)
+// execFile executes the hook script at path f with data piped to stdin and the given environment variables.
+// If timeout is greater than zero, the process and its children are killed via process group termination after
+// the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
+// the process to exit, preventing zombie processes.
+func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
+	ctx := context.Background()
+
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+	} else {
+		cancel = func() {}
+	}
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, f)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		// Kill the entire process group instead of just the parent
+		if cmd.Process == nil {
+			return os.ErrProcessDone
+		}
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
 
 	if h.Stdout != nil {
 		cmd.Stdout = h.Stdout
@@ -205,32 +228,36 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	if err != nil {
 		return err
 	}
-	defer stdin.Close()
 
-	err = cmd.Start()
-	if err != nil {
+	if _, err := data.Seek(0, 0); err != nil {
+		_ = stdin.Close()
 		return err
 	}
 
-	_, err = data.Seek(0, 0)
-	if err != nil {
+	if err := cmd.Start(); err != nil {
+		_ = stdin.Close()
 		return err
 	}
 
-	_, err = io.Copy(stdin, data)
-	if err != nil {
+	defer func() {
+		waitErr := cmd.Wait()
+
+		if waitErr != nil && ctx.Err() == context.DeadlineExceeded {
+			waitErr = fmt.Errorf("hook timed out after %s: %w", timeout, waitErr)
+		}
+
+		err = errors.Join(err, waitErr)
+	}()
+
+	if _, err := io.Copy(stdin, data); err != nil {
+		_ = stdin.Close()
 		return err
 	}
-	stdin.Close()
 
-	timer := time.AfterFunc(timeout, func() {
-		cmd.Process.Kill()
-	})
+	// Ignore close error - child may exit early without reading all stdin
+	_ = stdin.Close()
 
-	err = cmd.Wait()
-	timer.Stop()
-
-	return err
+	return nil
 }
 
 // todo: base this on OS
