@@ -125,7 +125,7 @@ func TestEnvPopulatedCorrectly(t *testing.T) {
 		Stdout: out,
 	}
 
-	err := h.Exec("user", "repo", "event", "action", 1*time.Minute, "FOO=BAR", "BAZ=QUX")
+	err := h.Exec("user", "repo", "event", "action", "test-delivery", 1*time.Minute, "FOO=BAR", "BAZ=QUX")
 	if err != nil {
 		t.Error(err)
 	}
