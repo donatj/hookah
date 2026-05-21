@@ -1,8 +1,6 @@
 module github.com/donatj/hookah/v3
 
-go 1.21
-
-toolchain go1.21.4
+go 1.26
 
 require (
 	github.com/donatj/hmacsig v1.2.0
