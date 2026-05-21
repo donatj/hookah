@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"sync"
 	"time"
-
 )
 
 var ErrPathIsNotDir = errors.New("path is not a dir")
@@ -122,7 +121,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println(ghDelivery, err)
+		log.Println(ghDelivery, "error reading request body:", err)
 		return
 	}
 	buff := bytes.NewReader(b)
@@ -133,7 +132,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = decoder.Decode(basicHook)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println(ghDelivery, err)
+		log.Println(ghDelivery, "error decoding body JSON:", err)
 		return
 	}
 
@@ -160,7 +159,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		err := hook.Exec(login, repo, ghEvent, action, h.Timeout,
+		err := hook.Exec(login, repo, ghEvent, action, ghDelivery, h.Timeout,
 			"GITHUB_DELIVERY="+ghDelivery,
 			"GITHUB_LOGIN="+login,
 			"GITHUB_REPO="+repo,

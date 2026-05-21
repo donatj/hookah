@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/donatj/hookah/v3/internal/writer"
 )
 
 // HookExec represents a call to a hook
@@ -134,7 +136,7 @@ func (h *HookExec) InfoLogln(msg string) {
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration, env ...string) error {
+func (h *HookExec) Exec(owner, repo, event, action, delivery string, timeout time.Duration, env ...string) error {
 	files, errHandlers, err := h.GetPathExecs(owner, repo, event, action)
 
 	if err != nil {
@@ -151,7 +153,7 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 
-		err := h.execFile(f, h.Data, timeout, env...)
+		err := h.execFile(f, delivery, h.Data, timeout, env...)
 
 		if err != nil {
 			h.InfoLogf("exec error: %s", err)
@@ -160,7 +162,7 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 				h.InfoLogf("beginning error handler execution of %#v", e)
 
 				env2 := append(env, getErrorHandlerEnv(f, err)...)
-				err2 := h.execFile(e, h.Data, timeout, env2...)
+				err2 := h.execFile(e, delivery+"[error]", h.Data, timeout, env2...)
 				errs = append(errs, err2)
 			}
 		}
@@ -189,7 +191,7 @@ func getErrorHandlerEnv(f string, err error) []string {
 // If timeout is greater than zero, the process and its children are killed via process group termination after
 // the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
 // the process to exit, preventing zombie processes.
-func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
+func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
 	ctx := context.Background()
 
 	var cancel context.CancelFunc
@@ -219,8 +221,11 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	if h.Stderr != nil {
 		cmd.Stderr = h.Stderr
 	} else {
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = os.Stdout // uniformly dump logs to stdout by default
 	}
+
+	cmd.Stdout = writer.NewPrefixWriter(cmd.Stdout, fmt.Sprintf("%s %s (stdout) > ", prefix, filepath.Base(f)))
+	cmd.Stderr = writer.NewPrefixWriter(cmd.Stderr, fmt.Sprintf("%s %s (stderr) > ", prefix, filepath.Base(f)))
 
 	cmd.Env = append(os.Environ(), env...)
 
