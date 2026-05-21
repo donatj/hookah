@@ -24,6 +24,9 @@ type HookExec struct {
 
 	Stdout io.Writer
 	Stderr io.Writer
+
+	// DisableLogPrefixes disables timestamp and file path prefixes on stdout/stderr
+	DisableLogPrefixes bool
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -231,25 +234,27 @@ func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.D
 		cmd.Stderr = os.Stdout // uniformly dump logs to stdout by default
 	}
 
-	relPath, err := filepath.Rel(h.RootDir, f)
-	if err != nil {
-		relPath = f
-	}
+	if !h.DisableLogPrefixes {
+		relPath, err := filepath.Rel(h.RootDir, f)
+		if err != nil {
+			relPath = f
+		}
 
-	if len(prefix) > longestPrefixLogged {
-		longestPrefixLogged = len(prefix)
-	}
+		if len(prefix) > longestPrefixLogged {
+			longestPrefixLogged = len(prefix)
+		}
 
-	if len(relPath) > longestFileNameLogged {
-		longestFileNameLogged = len(relPath)
-	}
+		if len(relPath) > longestFileNameLogged {
+			longestFileNameLogged = len(relPath)
+		}
 
-	cmd.Stdout = writer.NewPrefixWriter(cmd.Stdout, func() string {
-		return fmt.Sprintf(": %s %*s %*s (stdout) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
-	})
-	cmd.Stderr = writer.NewPrefixWriter(cmd.Stderr, func() string {
-		return fmt.Sprintf(": %s %*s %*s (stderr) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
-	})
+		cmd.Stdout = writer.NewPrefixWriter(cmd.Stdout, func() string {
+			return fmt.Sprintf(": %s %*s %*s (stdout) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
+		})
+		cmd.Stderr = writer.NewPrefixWriter(cmd.Stderr, func() string {
+			return fmt.Sprintf(": %s %*s %*s (stderr) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
+		})
+	}
 
 	cmd.Env = append(os.Environ(), env...)
 
