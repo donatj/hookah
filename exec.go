@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/donatj/hookah/v3/internal/writer"
 )
 
 // HookExec represents a call to a hook
@@ -22,6 +24,9 @@ type HookExec struct {
 
 	Stdout io.Writer
 	Stderr io.Writer
+
+	// DisableLogPrefixes disables timestamp and file path prefixes on stdout/stderr
+	DisableLogPrefixes bool
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -134,7 +139,7 @@ func (h *HookExec) InfoLogln(msg string) {
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration, env ...string) error {
+func (h *HookExec) Exec(owner, repo, event, action, delivery string, timeout time.Duration, env ...string) error {
 	files, errHandlers, err := h.GetPathExecs(owner, repo, event, action)
 
 	if err != nil {
@@ -151,7 +156,7 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 
-		err := h.execFile(f, h.Data, timeout, env...)
+		err := h.execFile(f, delivery, h.Data, timeout, env...)
 
 		if err != nil {
 			h.InfoLogf("exec error: %s", err)
@@ -160,7 +165,7 @@ func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration
 				h.InfoLogf("beginning error handler execution of %#v", e)
 
 				env2 := append(env, getErrorHandlerEnv(f, err)...)
-				err2 := h.execFile(e, h.Data, timeout, env2...)
+				err2 := h.execFile(e, "[err] "+delivery, h.Data, timeout, env2...)
 				errs = append(errs, err2)
 			}
 		}
@@ -185,11 +190,18 @@ func getErrorHandlerEnv(f string, err error) []string {
 	return env
 }
 
+const logDateFmt = "2006/01/02 15:04:05"
+
+var (
+	longestFileNameLogged int = 0
+	longestPrefixLogged   int = 0
+)
+
 // execFile executes the hook script at path f with data piped to stdin and the given environment variables.
 // If timeout is greater than zero, the process and its children are killed via process group termination after
 // the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
 // the process to exit, preventing zombie processes.
-func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
+func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
 	ctx := context.Background()
 
 	var cancel context.CancelFunc
@@ -219,7 +231,29 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	if h.Stderr != nil {
 		cmd.Stderr = h.Stderr
 	} else {
-		cmd.Stderr = os.Stderr
+		cmd.Stderr = os.Stdout // uniformly dump logs to stdout by default
+	}
+
+	if !h.DisableLogPrefixes {
+		relPath, err := filepath.Rel(h.RootDir, f)
+		if err != nil {
+			relPath = f
+		}
+
+		if len(prefix) > longestPrefixLogged {
+			longestPrefixLogged = len(prefix)
+		}
+
+		if len(relPath) > longestFileNameLogged {
+			longestFileNameLogged = len(relPath)
+		}
+
+		cmd.Stdout = writer.NewPrefixWriter(cmd.Stdout, func() string {
+			return fmt.Sprintf(": %s %*s %*s (stdout) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
+		})
+		cmd.Stderr = writer.NewPrefixWriter(cmd.Stderr, func() string {
+			return fmt.Sprintf(": %s %*s %*s (stderr) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
+		})
 	}
 
 	cmd.Env = append(os.Environ(), env...)
