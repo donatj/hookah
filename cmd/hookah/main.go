@@ -28,6 +28,11 @@ var favicon []byte
 
 func init() {
 	flag.Parse()
+	if flag.NArg() != 0 {
+		log.Printf("unexpected non-flag arguments: %v", flag.Args())
+		flag.Usage()
+		os.Exit(1)
+	}
 }
 
 func main() {
