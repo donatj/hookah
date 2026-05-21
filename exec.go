@@ -86,10 +86,10 @@ func pathScan(path string) ([]string, []string, error) {
 
 	if fs.IsDir() {
 		d, err := os.Open(path)
-		defer d.Close()
 		if err != nil {
 			return files, errHandlers, err
 		}
+		defer d.Close()
 
 		fi, err := d.Readdir(-1)
 		if err != nil {
@@ -307,12 +307,7 @@ func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.D
 // todo: base this on OS
 func isExecFile(fss ...string) (bool, error) {
 	if len(fss) > 10 {
-		paths := []string{}
-		for _, f := range fss {
-			paths = append(paths, f)
-		}
-
-		return false, fmt.Errorf("maximum symlink depth exceeded: %s", strings.Join(paths, " -> "))
+		return false, fmt.Errorf("maximum symlink depth exceeded: %s", strings.Join(fss, " -> "))
 	}
 
 	if len(fss) == 0 {
