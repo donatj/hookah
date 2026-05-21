@@ -122,7 +122,7 @@ func TestEnvPopulatedCorrectly(t *testing.T) {
 		Stdout: out,
 	}
 
-	err := h.Exec("user", "repo", "event", "action", 1*time.Minute, "FOO=BAR", "BAZ=QUX")
+	err := h.Exec("user", "repo", "event", "action", "test-delivery", 1*time.Minute, "FOO=BAR", "BAZ=QUX")
 	if err != nil {
 		t.Error(err)
 	}
@@ -167,7 +167,7 @@ func TestExecFileTimeout(t *testing.T) {
 	data := strings.NewReader(`{}`)
 
 	start := time.Now()
-	err = h.execFile(f.Name(), data, 200*time.Millisecond)
+	err = h.execFile(f.Name(), "test", data, 200*time.Millisecond)
 	elapsed := time.Since(start)
 
 	require.Error(t, err)
@@ -196,7 +196,7 @@ func TestExecFileCopyError(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- h.execFile(f.Name(), data, 5*time.Second)
+		done <- h.execFile(f.Name(), "test", data, 5*time.Second)
 	}()
 
 	select {
