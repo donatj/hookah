@@ -17,7 +17,8 @@ import (
 var (
 	httpPort   = flag.Uint("http-port", 8080, "HTTP port to listen on")
 	serverRoot = flag.String("server-root", ".", "The root directory of the hook script hierarchy")
-	secret     = flag.String("secret", "", "Optional GitHub HMAC secret key")
+	secret     = flag.String("secret", "", "GitHub HMAC secret key (required unless -no-secret)")
+	noSecret   = flag.Bool("no-secret", false, "Disable HMAC signature verification (insecure)")
 	timeout    = flag.Duration("timeout", 10*time.Minute, "Exec timeout on hook scripts")
 	verbose    = flag.Bool("v", false, "Enable verbose logger output")
 
@@ -33,6 +34,16 @@ func init() {
 		log.Printf("unexpected non-flag arguments: %v", flag.Args())
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	// Require secret unless explicitly disabled
+	if *secret == "" && !*noSecret {
+		log.Fatal("error: -secret is required (or use -no-secret to disable signature verification)")
+	}
+
+	// Don't allow both secret and no-secret
+	if *secret != "" && *noSecret {
+		log.Fatal("error: cannot specify both -secret and -no-secret")
 	}
 }
 
