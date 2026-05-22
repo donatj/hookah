@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/donatj/hookah/v3/internal/writer"
+	"github.com/donatj/hookah/v4/internal/writer"
 )
 
 // Logger handles Printf and Println

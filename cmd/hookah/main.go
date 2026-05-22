@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/donatj/hmacsig"
-	"github.com/donatj/hookah/v3"
-	"github.com/donatj/hookah/v3/internal/exec"
+	"github.com/donatj/hookah/v4/internal/exec"
+	"github.com/donatj/hookah/v4/internal/server"
 )
 
 var (
@@ -38,16 +38,16 @@ func init() {
 
 func main() {
 	logger := getLogger(*errlog)
-	options := []hookah.ServerOption{
-		hookah.ServerExecTimeout(*timeout),
-		hookah.ServerErrorLog(logger),
+	options := []server.ServerOption{
+		server.ServerExecTimeout(*timeout),
+		server.ServerErrorLog(logger),
 	}
 
 	if *verbose {
-		options = append(options, hookah.ServerInfoLog(logger))
+		options = append(options, server.ServerInfoLog(logger))
 	}
 
-	hServe, err := hookah.NewHookServer(*serverRoot, options...)
+	hServe, err := server.NewHookServer(*serverRoot, options...)
 	if err != nil {
 		log.Fatal(err)
 	}

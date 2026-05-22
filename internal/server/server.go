@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/donatj/hookah/v3/internal/exec"
+	"github.com/donatj/hookah/v4/internal/exec"
 )
 
 var ErrPathIsNotDir = errors.New("path is not a dir")
