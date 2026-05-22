@@ -146,12 +146,32 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
-	formatter := logging.NewFormatter(h.RootDir)
 	hook := exec.NewHookExec(h.RootDir, buff,
 		exec.WithInfoLog(h.InfoLog),
 		exec.WithWriterFactory(func(stdout, stderr io.Writer, filePath string) (io.Writer, io.Writer) {
-			wrappedStdout := formatter.Wrap(stdout, ghDelivery, login, repo, filePath, "stdout")
-			wrappedStderr := formatter.Wrap(stderr, ghDelivery, login, repo, filePath, "stderr")
+			relPath, err := filepath.Rel(h.RootDir, filePath)
+			if err != nil {
+				relPath = filePath
+			}
+
+			wrappedStdout := logging.NewPrefixWriter(stdout, func() string {
+				return fmt.Sprintf("| %s %s %s/%s %s (stdout) > ",
+					time.Now().Format("2006/01/02 15:04:05"),
+					ghDelivery,
+					login,
+					repo,
+					relPath)
+			})
+
+			wrappedStderr := logging.NewPrefixWriter(stderr, func() string {
+				return fmt.Sprintf("| %s %s %s/%s %s (stderr) > ",
+					time.Now().Format("2006/01/02 15:04:05"),
+					ghDelivery,
+					login,
+					repo,
+					relPath)
+			})
+
 			return wrappedStdout, wrappedStderr
 		}),
 	)
