@@ -13,24 +13,20 @@ import (
 	"regexp"
 	"sync"
 	"time"
+
+	"github.com/donatj/hookah/v3/internal/exec"
 )
 
 var ErrPathIsNotDir = errors.New("path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
-
-// Logger handles Printf
-type Logger interface {
-	Printf(format string, v ...any)
-	Println(v ...any)
-}
 
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
 
 	Timeout  time.Duration
-	ErrorLog Logger
-	InfoLog  Logger
+	ErrorLog exec.Logger
+	InfoLog  exec.Logger
 
 	sync.Mutex
 }
@@ -84,7 +80,7 @@ func ServerExecTimeout(timeout time.Duration) ServerOption {
 }
 
 // ServerErrorLog configures the HookServer error logger
-func ServerErrorLog(log Logger) ServerOption {
+func ServerErrorLog(log exec.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.ErrorLog = log
 		return nil
@@ -92,7 +88,7 @@ func ServerErrorLog(log Logger) ServerOption {
 }
 
 // ServerInfoLog configures the HookServer info logger
-func ServerInfoLog(log Logger) ServerOption {
+func ServerInfoLog(log exec.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.InfoLog = log
 		return nil
@@ -149,11 +145,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
-	hook := HookExec{
-		RootDir: h.RootDir,
-		Data:    buff,
-		InfoLog: h.InfoLog,
-	}
+	hook := exec.NewHookExec(h.RootDir, buff, exec.WithInfoLog(h.InfoLog))
 
 	go func() {
 		h.Lock()
