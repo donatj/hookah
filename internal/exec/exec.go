@@ -108,14 +108,14 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 		}
 		// Use filepath.Clean to normalize the path and detect traversal attempts
 		cleaned := filepath.Clean(component)
-		if cleaned != component || strings.Contains(cleaned, string(filepath.Separator)) {
+		if cleaned != component || strings.Contains(cleaned, string(filepath.Separator)) || cleaned == "." || cleaned == ".." {
 			return nil, nil, fmt.Errorf("%w in %s: %q", ErrPathTraversal, name, component)
 		}
 	}
 	// Action is optional but must be validated if present
 	if action != "" {
 		cleaned := filepath.Clean(action)
-		if cleaned != action || strings.Contains(cleaned, string(filepath.Separator)) {
+		if cleaned != action || strings.Contains(cleaned, string(filepath.Separator)) || cleaned == "." || cleaned == ".." {
 			return nil, nil, fmt.Errorf("%w in action: %q", ErrPathTraversal, action)
 		}
 	}
