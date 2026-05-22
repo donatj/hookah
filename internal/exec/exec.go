@@ -95,12 +95,9 @@ func NewHookExec(rootDir string, data io.ReadSeeker, opts ...HookExecOption) *Ho
 }
 
 // validatePathComponent checks if a path component is safe from directory traversal.
-// Returns an error if the component is unsafe.
-func validatePathComponent(component, name string, allowEmpty bool) error {
+// Returns an error if the component is empty or unsafe.
+func validatePathComponent(component, name string) error {
 	if component == "" {
-		if allowEmpty {
-			return nil
-		}
 		return fmt.Errorf("%w: empty %s not allowed", ErrPathTraversal, name)
 	}
 	// Use filepath.Clean to normalize the path and detect traversal attempts
@@ -120,13 +117,15 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 		"repo":  repo,
 		"event": event,
 	} {
-		if err := validatePathComponent(component, name, false); err != nil {
+		if err := validatePathComponent(component, name); err != nil {
 			return nil, nil, err
 		}
 	}
 	// Action is optional but must be validated if present
-	if err := validatePathComponent(action, "action", true); err != nil {
-		return nil, nil, err
+	if action != "" {
+		if err := validatePathComponent(action, "action"); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	outfiles := []string{}
