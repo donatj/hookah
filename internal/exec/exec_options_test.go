@@ -32,8 +32,8 @@ func TestNewHookExec(t *testing.T) {
 		logger := log.New(&logBuf, "", 0)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
-		factory := func(filePath string) (io.Writer, io.Writer) {
-			return stdout, stderr
+		factory := func(out, err io.Writer, filePath string) (io.Writer, io.Writer) {
+			return out, err
 		}
 
 		h := NewHookExec(

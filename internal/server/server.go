@@ -149,10 +149,10 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	formatter := logging.NewFormatter(h.RootDir)
 	hook := exec.NewHookExec(h.RootDir, buff,
 		exec.WithInfoLog(h.InfoLog),
-		exec.WithWriterFactory(func(filePath string) (io.Writer, io.Writer) {
-			stdout := formatter.Wrap(os.Stdout, ghDelivery, filePath, "stdout")
-			stderr := formatter.Wrap(os.Stdout, ghDelivery, filePath, "stderr")
-			return stdout, stderr
+		exec.WithWriterFactory(func(stdout, stderr io.Writer, filePath string) (io.Writer, io.Writer) {
+			wrappedStdout := formatter.Wrap(stdout, ghDelivery, filePath, "stdout")
+			wrappedStderr := formatter.Wrap(stderr, ghDelivery, filePath, "stderr")
+			return wrappedStdout, wrappedStderr
 		}),
 	)
 

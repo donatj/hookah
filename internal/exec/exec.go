@@ -20,8 +20,8 @@ type Logger interface {
 	Println(v ...any)
 }
 
-// WriterFactory creates stdout and stderr writers for a given file path
-type WriterFactory func(filePath string) (stdout, stderr io.Writer)
+// WriterFactory wraps stdout and stderr writers for a given file path
+type WriterFactory func(stdout, stderr io.Writer, filePath string) (wrappedStdout, wrappedStderr io.Writer)
 
 // HookExec represents a call to a hook
 type HookExec struct {
@@ -281,21 +281,23 @@ func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.D
 		}
 	}
 
-	// Use WriterFactory if provided, otherwise fall back to Stdout/Stderr fields
-	if h.WriterFactory != nil {
-		cmd.Stdout, cmd.Stderr = h.WriterFactory(f)
-	} else {
-		if h.Stdout != nil {
-			cmd.Stdout = h.Stdout
-		} else {
-			cmd.Stdout = os.Stdout
-		}
+	// Determine base writers
+	stdout := h.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
 
-		if h.Stderr != nil {
-			cmd.Stderr = h.Stderr
-		} else {
-			cmd.Stderr = os.Stdout // uniformly dump logs to stdout by default
-		}
+	stderr := h.Stderr
+	if stderr == nil {
+		stderr = os.Stdout // uniformly dump logs to stdout by default
+	}
+
+	// Use WriterFactory to wrap them if provided
+	if h.WriterFactory != nil {
+		cmd.Stdout, cmd.Stderr = h.WriterFactory(stdout, stderr, f)
+	} else {
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
 	}
 
 	cmd.Env = append(os.Environ(), env...)
