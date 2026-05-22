@@ -68,6 +68,9 @@ func main() {
 	var serve http.Handler = hServe
 	if *secret != "" {
 		serve = hmacsig.Handler256(hServe, *secret)
+	} else {
+		logger.Println("WARNING: HMAC verification disabled - arbitrary requests can execute hooks and leak secrets")
+		logger.Println("WARNING: Do not expose this endpoint to public networks without -secret configured")
 	}
 
 	mux := http.NewServeMux()
