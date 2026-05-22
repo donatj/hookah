@@ -27,7 +27,7 @@ func isExecFile(fss ...string) (bool, error) {
 	}
 
 	mode := fi.Mode()
-	if mode.IsRegular() && mode|0111 == mode {
+	if mode.IsRegular() && mode&0o111 != 0 {
 		return true, nil
 	}
 
