@@ -2,7 +2,8 @@
 
 [![Join the chat at https://gitter.im/hookah-server/Lobby](https://badges.gitter.im/hookah-server/Lobby.svg)](https://gitter.im/hookah-server/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![GoDoc](https://godoc.org/github.com/donatj/hookah/v3?status.svg)](https://godoc.org/github.com/donatj/hookah/v3)
+[![Go Report Card](https://goreportcard.com/badge/github.com/donatj/hookah/v4)](https://goreportcard.com/report/github.com/donatj/hookah/v4)
+[![GoDoc](https://godoc.org/github.com/donatj/hookah/v4?status.svg)](https://godoc.org/github.com/donatj/hookah/v4)
 [![CI](https://github.com/donatj/hookah/actions/workflows/ci.yml/badge.svg)](https://github.com/donatj/hookah/actions/workflows/ci.yml)
 
 Hookah is a simple server for GitHub Webhooks that forwards the hooks message to any series of scripts, be they PHP, Ruby, Python or even straight up shell.
@@ -13,10 +14,10 @@ It simply passes the message on to the STDIN of any script.
 
 ### From Source
 
-Building v3 requires Go 1.27+
+Building v4 requires Go 1.26+
 
 ```bash
-go install github.com/donatj/hookah/v3/cmd/hookah@latest
+go install github.com/donatj/hookah/v4/cmd/hookah@latest
 ```
 
 ### From Binary
