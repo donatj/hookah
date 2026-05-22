@@ -189,7 +189,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.Lock()
 		defer h.Unlock()
 
-		err := hook.Exec(login, repo, ghEvent, action, ghDelivery, h.Timeout,
+		err := hook.Exec(login, repo, ghEvent, action, h.Timeout,
 			"GITHUB_DELIVERY="+ghDelivery,
 			"GITHUB_LOGIN="+login,
 			"GITHUB_REPO="+repo,

@@ -236,7 +236,7 @@ func (h *HookExec) InfoLogln(msg string) {
 }
 
 // Exec triggers the execution of all scripts associated with the given Hook
-func (h *HookExec) Exec(owner, repo, event, action, delivery string, timeout time.Duration, env ...string) error {
+func (h *HookExec) Exec(owner, repo, event, action string, timeout time.Duration, env ...string) error {
 	files, errHandlers, err := h.GetPathExecs(owner, repo, event, action)
 
 	if err != nil {
