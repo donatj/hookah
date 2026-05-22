@@ -217,7 +217,7 @@ func (h *HookExec) Exec(owner, repo, event, action, delivery string, timeout tim
 	for _, f := range files {
 		h.InfoLogf("beginning execution of %#v", f)
 
-		err := h.execFile(f, delivery, h.Data, timeout, env...)
+		err := h.execFile(f, h.Data, timeout, env...)
 
 		if err != nil {
 			h.InfoLogf("exec error: %s", err)
@@ -226,7 +226,7 @@ func (h *HookExec) Exec(owner, repo, event, action, delivery string, timeout tim
 				h.InfoLogf("beginning error handler execution of %#v", e)
 
 				env2 := append(env, getErrorHandlerEnv(f, err)...)
-				err2 := h.execFile(e, "[err] "+delivery, h.Data, timeout, env2...)
+				err2 := h.execFile(e, h.Data, timeout, env2...)
 				errs = append(errs, err2)
 			}
 		}
@@ -255,7 +255,7 @@ func getErrorHandlerEnv(f string, err error) []string {
 // If timeout is greater than zero, the process and its children are killed via process group termination after
 // the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
 // the process to exit, preventing zombie processes.
-func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
+func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration, env ...string) (err error) {
 	ctx := context.Background()
 
 	var cancel context.CancelFunc
