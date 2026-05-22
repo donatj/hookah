@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
-
-	"github.com/donatj/hookah/v4/internal/writer"
 )
 
 const logDateFmt = "2006/01/02 15:04:05"
@@ -46,7 +44,7 @@ func (f *Formatter) Wrap(w io.Writer, deliveryID, filePath, stream string) io.Wr
 	longestFileName := f.longestFileName
 	f.mu.Unlock()
 
-	return writer.NewPrefixWriter(w, func() string {
+	return NewPrefixWriter(w, func() string {
 		return fmt.Sprintf(": %s %*s %*s (%s) > ",
 			time.Now().Format(logDateFmt),
 			longestPrefix, deliveryID,
