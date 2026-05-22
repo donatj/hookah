@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+// ErrPathTraversal is returned when a path component contains characters that could be used for directory traversal.
+// Can be checked with errors.Is().
+var ErrPathTraversal = errors.New("rejected path traversal attempt")
+
 // Logger handles Printf and Println
 type Logger interface {
 	Printf(format string, v ...any)
@@ -90,8 +94,32 @@ func NewHookExec(rootDir string, data io.ReadSeeker, opts ...HookExecOption) *Ho
 	return h
 }
 
-// GetPathExecs fetches the executable filenames for the given path
+// GetPathExecs fetches the executable filenames for the given path.
+// Returns ErrPathTraversal if any component attempts directory traversal.
 func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []string, error) {
+	// Validate path components to prevent directory traversal attacks
+	for name, component := range map[string]string{
+		"owner": owner,
+		"repo":  repo,
+		"event": event,
+	} {
+		if component == "" {
+			return nil, nil, fmt.Errorf("%w: empty %s not allowed", ErrPathTraversal, name)
+		}
+		// Use filepath.Clean to normalize the path and detect traversal attempts
+		cleaned := filepath.Clean(component)
+		if cleaned != component || strings.Contains(cleaned, string(filepath.Separator)) {
+			return nil, nil, fmt.Errorf("%w in %s: %q", ErrPathTraversal, name, component)
+		}
+	}
+	// Action is optional but must be validated if present
+	if action != "" {
+		cleaned := filepath.Clean(action)
+		if cleaned != action || strings.Contains(cleaned, string(filepath.Separator)) {
+			return nil, nil, fmt.Errorf("%w in action: %q", ErrPathTraversal, action)
+		}
+	}
+
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
