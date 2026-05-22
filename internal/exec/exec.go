@@ -361,37 +361,3 @@ func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.D
 
 	return nil
 }
-
-// todo: base this on OS
-func isExecFile(fss ...string) (bool, error) {
-	if len(fss) > 10 {
-		return false, fmt.Errorf("maximum symlink depth exceeded: %s", strings.Join(fss, " -> "))
-	}
-
-	if len(fss) == 0 {
-		return false, errors.New("no file info provided")
-	}
-
-	fs := fss[len(fss)-1]
-	fi, err := os.Stat(fs)
-	if err != nil {
-		return false, err
-	}
-
-	mode := fi.Mode()
-	if mode.IsRegular() && mode|0111 == mode {
-		return true, nil
-	}
-
-	if mode&os.ModeSymlink != 0 {
-		link, err := os.Readlink(fi.Name())
-		if err != nil {
-			return false, err
-		}
-
-		fss = append(fss, link)
-		return isExecFile(fss...)
-	}
-
-	return false, nil
-}
