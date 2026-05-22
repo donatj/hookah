@@ -2,6 +2,7 @@ package exec
 
 import (
 	"bytes"
+	"io"
 	"log"
 	"strings"
 	"testing"
@@ -21,8 +22,8 @@ func TestNewHookExec(t *testing.T) {
 		if h.InfoLog != nil {
 			t.Error("expected InfoLog to be nil by default")
 		}
-		if h.DisableLogPrefixes {
-			t.Error("expected DisableLogPrefixes to be false by default")
+		if h.WriterFactory != nil {
+			t.Error("expected WriterFactory to be nil by default")
 		}
 	})
 
@@ -31,6 +32,9 @@ func TestNewHookExec(t *testing.T) {
 		logger := log.New(&logBuf, "", 0)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
+		factory := func(filePath string) (io.Writer, io.Writer) {
+			return stdout, stderr
+		}
 
 		h := NewHookExec(
 			"/tmp/hooks",
@@ -38,7 +42,7 @@ func TestNewHookExec(t *testing.T) {
 			WithInfoLog(logger),
 			WithStdout(stdout),
 			WithStderr(stderr),
-			WithDisableLogPrefixes(true),
+			WithWriterFactory(factory),
 		)
 
 		if h.RootDir != "/tmp/hooks" {
@@ -56,8 +60,8 @@ func TestNewHookExec(t *testing.T) {
 		if h.Stderr != stderr {
 			t.Error("expected Stderr to be set")
 		}
-		if !h.DisableLogPrefixes {
-			t.Error("expected DisableLogPrefixes to be true")
+		if h.WriterFactory == nil {
+			t.Error("expected WriterFactory to be set")
 		}
 	})
 

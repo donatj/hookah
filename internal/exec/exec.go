@@ -12,8 +12,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/donatj/hookah/v4/internal/writer"
 )
 
 // Logger handles Printf and Println
@@ -21,6 +19,9 @@ type Logger interface {
 	Printf(format string, v ...any)
 	Println(v ...any)
 }
+
+// WriterFactory creates stdout and stderr writers for a given file path
+type WriterFactory func(filePath string) (stdout, stderr io.Writer)
 
 // HookExec represents a call to a hook
 type HookExec struct {
@@ -31,11 +32,8 @@ type HookExec struct {
 	Stdout io.Writer
 	Stderr io.Writer
 
-	// DisableLogPrefixes disables timestamp and file path prefixes on stdout/stderr
-	DisableLogPrefixes bool
-
-	longestPrefix   int
-	longestFileName int
+	// WriterFactory optionally creates custom writers for each executed file
+	WriterFactory WriterFactory
 }
 
 // HookExecOption is a functional option for configuring HookExec
@@ -62,10 +60,10 @@ func WithStderr(w io.Writer) HookExecOption {
 	}
 }
 
-// WithDisableLogPrefixes disables timestamp and file path prefixes on stdout/stderr
-func WithDisableLogPrefixes(disable bool) HookExecOption {
+// WithWriterFactory sets a factory function that creates stdout and stderr writers for each executed file
+func WithWriterFactory(factory WriterFactory) HookExecOption {
 	return func(h *HookExec) {
-		h.DisableLogPrefixes = disable
+		h.WriterFactory = factory
 	}
 }
 
@@ -253,8 +251,6 @@ func getErrorHandlerEnv(f string, err error) []string {
 	return env
 }
 
-const logDateFmt = "2006/01/02 15:04:05"
-
 // execFile executes the hook script at path f with data piped to stdin and the given environment variables.
 // If timeout is greater than zero, the process and its children are killed via process group termination after
 // the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
@@ -285,38 +281,21 @@ func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.D
 		}
 	}
 
-	if h.Stdout != nil {
-		cmd.Stdout = h.Stdout
+	// Use WriterFactory if provided, otherwise fall back to Stdout/Stderr fields
+	if h.WriterFactory != nil {
+		cmd.Stdout, cmd.Stderr = h.WriterFactory(f)
 	} else {
-		cmd.Stdout = os.Stdout
-	}
-
-	if h.Stderr != nil {
-		cmd.Stderr = h.Stderr
-	} else {
-		cmd.Stderr = os.Stdout // uniformly dump logs to stdout by default
-	}
-
-	if !h.DisableLogPrefixes {
-		relPath, err := filepath.Rel(h.RootDir, f)
-		if err != nil {
-			relPath = f
+		if h.Stdout != nil {
+			cmd.Stdout = h.Stdout
+		} else {
+			cmd.Stdout = os.Stdout
 		}
 
-		if len(prefix) > h.longestPrefix {
-			h.longestPrefix = len(prefix)
+		if h.Stderr != nil {
+			cmd.Stderr = h.Stderr
+		} else {
+			cmd.Stderr = os.Stdout // uniformly dump logs to stdout by default
 		}
-
-		if len(relPath) > h.longestFileName {
-			h.longestFileName = len(relPath)
-		}
-
-		cmd.Stdout = writer.NewPrefixWriter(cmd.Stdout, func() string {
-			return fmt.Sprintf(": %s %*s %*s (stdout) > ", time.Now().Format(logDateFmt), h.longestPrefix, prefix, h.longestFileName, relPath)
-		})
-		cmd.Stderr = writer.NewPrefixWriter(cmd.Stderr, func() string {
-			return fmt.Sprintf(": %s %*s %*s (stderr) > ", time.Now().Format(logDateFmt), h.longestPrefix, prefix, h.longestFileName, relPath)
-		})
 	}
 
 	cmd.Env = append(os.Environ(), env...)

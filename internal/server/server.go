@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/donatj/hookah/v4/internal/exec"
+	"github.com/donatj/hookah/v4/internal/logging"
 )
 
 var ErrPathIsNotDir = errors.New("path is not a dir")
@@ -145,7 +146,15 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
-	hook := exec.NewHookExec(h.RootDir, buff, exec.WithInfoLog(h.InfoLog))
+	formatter := logging.NewFormatter(h.RootDir)
+	hook := exec.NewHookExec(h.RootDir, buff,
+		exec.WithInfoLog(h.InfoLog),
+		exec.WithWriterFactory(func(filePath string) (io.Writer, io.Writer) {
+			stdout := formatter.Wrap(os.Stdout, ghDelivery, filePath, "stdout")
+			stderr := formatter.Wrap(os.Stdout, ghDelivery, filePath, "stderr")
+			return stdout, stderr
+		}),
+	)
 
 	go func() {
 		h.Lock()

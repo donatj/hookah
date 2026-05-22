@@ -119,10 +119,9 @@ func TestEnvPopulatedCorrectly(t *testing.T) {
 	data := strings.NewReader(`{"foo": "bar"}`)
 
 	h := HookExec{
-		RootDir:            "../../testdata/env-test-server",
-		Data:               data,
-		Stdout:             out,
-		DisableLogPrefixes: true,
+		RootDir: "../../testdata/env-test-server",
+		Data:    data,
+		Stdout:  out,
 	}
 
 	err := h.Exec("user", "repo", "event", "action", "test-delivery", 1*time.Minute, "FOO=BAR", "BAZ=QUX")
