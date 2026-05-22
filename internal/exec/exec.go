@@ -110,6 +110,8 @@ func validatePathComponent(component, name string) error {
 
 // GetPathExecs fetches the executable filenames for the given path.
 // Returns ErrPathTraversal if any component attempts directory traversal.
+//
+// action is optional - if empty, it will be omitted from the path resolution.
 func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []string, error) {
 	// Validate path components to prevent directory traversal attacks
 	for name, component := range map[string]string{
@@ -118,12 +120,6 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 		"event": event,
 	} {
 		if err := validatePathComponent(component, name); err != nil {
-			return nil, nil, err
-		}
-	}
-	// Action is optional but must be validated if present
-	if action != "" {
-		if err := validatePathComponent(action, "action"); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -140,6 +136,11 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 			{filepath.Join(h.RootDir, "@@", "@@"), event},
 		}
 	} else {
+		// Validate action component to prevent directory traversal attacks
+		if err := validatePathComponent(action, "action"); err != nil {
+			return nil, nil, err
+		}
+
 		pathSets = [][]string{
 			{h.RootDir, owner, repo, event, action},
 			{filepath.Join(h.RootDir, "@@"), repo, event, action},
