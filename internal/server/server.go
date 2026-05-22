@@ -1,4 +1,4 @@
-package hookah
+package server
 
 import (
 	"bytes"

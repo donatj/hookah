@@ -1,4 +1,4 @@
-package hookah
+package exec
 
 import (
 	"context"
@@ -16,6 +16,12 @@ import (
 	"github.com/donatj/hookah/v3/internal/writer"
 )
 
+// Logger handles Printf and Println
+type Logger interface {
+	Printf(format string, v ...any)
+	Println(v ...any)
+}
+
 // HookExec represents a call to a hook
 type HookExec struct {
 	RootDir string
@@ -27,6 +33,63 @@ type HookExec struct {
 
 	// DisableLogPrefixes disables timestamp and file path prefixes on stdout/stderr
 	DisableLogPrefixes bool
+
+	longestPrefix   int
+	longestFileName int
+}
+
+// HookExecOption is a functional option for configuring HookExec
+type HookExecOption func(*HookExec)
+
+// WithInfoLog sets the info logger
+func WithInfoLog(logger Logger) HookExecOption {
+	return func(h *HookExec) {
+		h.InfoLog = logger
+	}
+}
+
+// WithStdout sets the stdout writer
+func WithStdout(w io.Writer) HookExecOption {
+	return func(h *HookExec) {
+		h.Stdout = w
+	}
+}
+
+// WithStderr sets the stderr writer
+func WithStderr(w io.Writer) HookExecOption {
+	return func(h *HookExec) {
+		h.Stderr = w
+	}
+}
+
+// WithDisableLogPrefixes disables timestamp and file path prefixes on stdout/stderr
+func WithDisableLogPrefixes(disable bool) HookExecOption {
+	return func(h *HookExec) {
+		h.DisableLogPrefixes = disable
+	}
+}
+
+// NewHookExec creates a new HookExec with the given required parameters and optional configuration.
+//
+// Example:
+//
+//	data := strings.NewReader(`{"event": "push"}`)
+//	hook := NewHookExec(
+//	    "/path/to/hooks",
+//	    data,
+//	    WithInfoLog(logger),
+//	    WithStdout(os.Stdout),
+//	    WithDisableLogPrefixes(false),
+//	)
+func NewHookExec(rootDir string, data io.ReadSeeker, opts ...HookExecOption) *HookExec {
+	h := &HookExec{
+		RootDir: rootDir,
+		Data:    data,
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
 }
 
 // GetPathExecs fetches the executable filenames for the given path
@@ -192,11 +255,6 @@ func getErrorHandlerEnv(f string, err error) []string {
 
 const logDateFmt = "2006/01/02 15:04:05"
 
-var (
-	longestFileNameLogged int = 0
-	longestPrefixLogged   int = 0
-)
-
 // execFile executes the hook script at path f with data piped to stdin and the given environment variables.
 // If timeout is greater than zero, the process and its children are killed via process group termination after
 // the timeout expires. If timeout is zero, the process runs without a timeout. The function always waits for
@@ -245,19 +303,19 @@ func (h *HookExec) execFile(f, prefix string, data io.ReadSeeker, timeout time.D
 			relPath = f
 		}
 
-		if len(prefix) > longestPrefixLogged {
-			longestPrefixLogged = len(prefix)
+		if len(prefix) > h.longestPrefix {
+			h.longestPrefix = len(prefix)
 		}
 
-		if len(relPath) > longestFileNameLogged {
-			longestFileNameLogged = len(relPath)
+		if len(relPath) > h.longestFileName {
+			h.longestFileName = len(relPath)
 		}
 
 		cmd.Stdout = writer.NewPrefixWriter(cmd.Stdout, func() string {
-			return fmt.Sprintf(": %s %*s %*s (stdout) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
+			return fmt.Sprintf(": %s %*s %*s (stdout) > ", time.Now().Format(logDateFmt), h.longestPrefix, prefix, h.longestFileName, relPath)
 		})
 		cmd.Stderr = writer.NewPrefixWriter(cmd.Stderr, func() string {
-			return fmt.Sprintf(": %s %*s %*s (stderr) > ", time.Now().Format(logDateFmt), longestPrefixLogged, prefix, longestFileNameLogged, relPath)
+			return fmt.Sprintf(": %s %*s %*s (stderr) > ", time.Now().Format(logDateFmt), h.longestPrefix, prefix, h.longestFileName, relPath)
 		})
 	}
 

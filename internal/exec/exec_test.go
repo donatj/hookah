@@ -1,4 +1,4 @@
-package hookah
+package exec
 
 import (
 	"bytes"
@@ -20,31 +20,31 @@ import (
 func TestOnlyExecutableBinsFound(t *testing.T) {
 
 	expectedScripts := []string{
-		"testdata/exec-only-test-server/exec.sh",
-		"testdata/exec-only-test-server/exec.symlink.sh",
-		"testdata/exec-only-test-server/user/exec.sh",
-		"testdata/exec-only-test-server/user/repo/exec.sh",
-		"testdata/exec-only-test-server/user/repo/event/exec.sh",
-		"testdata/exec-only-test-server/@@/exec.sh",
-		"testdata/exec-only-test-server/@@/exec.symlink.symlink.sh",
-		"testdata/exec-only-test-server/@@/repo/exec.sh",
-		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
-		"testdata/exec-only-test-server/user/@@/exec.sh",
-		"testdata/exec-only-test-server/user/@@/event/exec.sh",
-		"testdata/exec-only-test-server/@@/@@/exec.sh",
-		"testdata/exec-only-test-server/@@/@@/event/exec.sh",
+		"../../testdata/exec-only-test-server/exec.sh",
+		"../../testdata/exec-only-test-server/exec.symlink.sh",
+		"../../testdata/exec-only-test-server/user/exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/event/exec.sh",
+		"../../testdata/exec-only-test-server/@@/exec.sh",
+		"../../testdata/exec-only-test-server/@@/exec.symlink.symlink.sh",
+		"../../testdata/exec-only-test-server/@@/repo/exec.sh",
+		"../../testdata/exec-only-test-server/@@/repo/event/exec.sh",
+		"../../testdata/exec-only-test-server/user/@@/exec.sh",
+		"../../testdata/exec-only-test-server/user/@@/event/exec.sh",
+		"../../testdata/exec-only-test-server/@@/@@/exec.sh",
+		"../../testdata/exec-only-test-server/@@/@@/event/exec.sh",
 	}
 
 	expectedErrhandlers := []string{
-		"testdata/exec-only-test-server/@@error.exec.sh",
-		"testdata/exec-only-test-server/user/@@error.exec.sh",
-		"testdata/exec-only-test-server/user/repo/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/user/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/@@error.exec.sh",
 	}
 
 	data := strings.NewReader(`{"foo": "bar"}`)
 
 	h := HookExec{
-		RootDir: "./testdata/exec-only-test-server",
+		RootDir: "../../testdata/exec-only-test-server",
 		Data:    data,
 	}
 
@@ -64,38 +64,38 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 func TestActionDirectoriesWorkAsExpected(t *testing.T) {
 
 	expectedScripts := []string{
-		"testdata/exec-only-test-server/exec.sh",
-		"testdata/exec-only-test-server/exec.symlink.sh",
-		"testdata/exec-only-test-server/user/exec.sh",
-		"testdata/exec-only-test-server/user/repo/exec.sh",
-		"testdata/exec-only-test-server/user/repo/event/exec.sh",
-		"testdata/exec-only-test-server/user/repo/event/action/exec.sh",
-		"testdata/exec-only-test-server/@@/exec.sh",
-		"testdata/exec-only-test-server/@@/exec.symlink.symlink.sh",
-		"testdata/exec-only-test-server/@@/repo/exec.sh",
-		"testdata/exec-only-test-server/@@/repo/event/exec.sh",
-		"testdata/exec-only-test-server/@@/repo/event/action/exec.sh",
-		"testdata/exec-only-test-server/user/@@/exec.sh",
-		"testdata/exec-only-test-server/user/@@/event/exec.sh",
-		"testdata/exec-only-test-server/user/@@/event/action/exec.sh",
-		"testdata/exec-only-test-server/@@/@@/exec.sh",
-		"testdata/exec-only-test-server/@@/@@/event/exec.sh",
-		"testdata/exec-only-test-server/@@/@@/event/action/exec.sh",
+		"../../testdata/exec-only-test-server/exec.sh",
+		"../../testdata/exec-only-test-server/exec.symlink.sh",
+		"../../testdata/exec-only-test-server/user/exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/event/exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/event/action/exec.sh",
+		"../../testdata/exec-only-test-server/@@/exec.sh",
+		"../../testdata/exec-only-test-server/@@/exec.symlink.symlink.sh",
+		"../../testdata/exec-only-test-server/@@/repo/exec.sh",
+		"../../testdata/exec-only-test-server/@@/repo/event/exec.sh",
+		"../../testdata/exec-only-test-server/@@/repo/event/action/exec.sh",
+		"../../testdata/exec-only-test-server/user/@@/exec.sh",
+		"../../testdata/exec-only-test-server/user/@@/event/exec.sh",
+		"../../testdata/exec-only-test-server/user/@@/event/action/exec.sh",
+		"../../testdata/exec-only-test-server/@@/@@/exec.sh",
+		"../../testdata/exec-only-test-server/@@/@@/event/exec.sh",
+		"../../testdata/exec-only-test-server/@@/@@/event/action/exec.sh",
 	}
 	expectedErrhandlers := []string{
-		"testdata/exec-only-test-server/@@error.exec.sh",
-		"testdata/exec-only-test-server/user/@@error.exec.sh",
-		"testdata/exec-only-test-server/user/repo/@@error.exec.sh",
-		"testdata/exec-only-test-server/user/repo/event/action/@@error.exec.sh",
-		"testdata/exec-only-test-server/@@/repo/event/action/@@error.exec.sh",
-		"testdata/exec-only-test-server/user/@@/event/action/@@error.exec.sh",
-		"testdata/exec-only-test-server/@@/@@/event/action/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/user/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/user/repo/event/action/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/@@/repo/event/action/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/user/@@/event/action/@@error.exec.sh",
+		"../../testdata/exec-only-test-server/@@/@@/event/action/@@error.exec.sh",
 	}
 
 	data := strings.NewReader(`{"foo": "bar"}`)
 
 	h := HookExec{
-		RootDir: "./testdata/exec-only-test-server",
+		RootDir: "../../testdata/exec-only-test-server",
 		Data:    data,
 	}
 
@@ -119,7 +119,7 @@ func TestEnvPopulatedCorrectly(t *testing.T) {
 	data := strings.NewReader(`{"foo": "bar"}`)
 
 	h := HookExec{
-		RootDir:            "./testdata/env-test-server",
+		RootDir:            "../../testdata/env-test-server",
 		Data:               data,
 		Stdout:             out,
 		DisableLogPrefixes: true,
