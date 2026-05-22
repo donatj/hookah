@@ -81,7 +81,7 @@ func WithWriterFactory(factory WriterFactory) HookExecOption {
 //	    data,
 //	    WithInfoLog(logger),
 //	    WithStdout(os.Stdout),
-//	    WithDisableLogPrefixes(false),
+//	    WithWriterFactory(myFactory),
 //	)
 func NewHookExec(rootDir string, data io.ReadSeeker, opts ...HookExecOption) *HookExec {
 	h := &HookExec{
