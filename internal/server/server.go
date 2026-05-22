@@ -150,8 +150,8 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	hook := exec.NewHookExec(h.RootDir, buff,
 		exec.WithInfoLog(h.InfoLog),
 		exec.WithWriterFactory(func(stdout, stderr io.Writer, filePath string) (io.Writer, io.Writer) {
-			wrappedStdout := formatter.Wrap(stdout, ghDelivery, filePath, "stdout")
-			wrappedStderr := formatter.Wrap(stderr, ghDelivery, filePath, "stderr")
+			wrappedStdout := formatter.Wrap(stdout, ghDelivery, login, repo, filePath, "stdout")
+			wrappedStderr := formatter.Wrap(stderr, ghDelivery, login, repo, filePath, "stderr")
 			return wrappedStdout, wrappedStderr
 		}),
 	)

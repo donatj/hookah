@@ -21,17 +21,19 @@ func NewFormatter(rootDir string) *Formatter {
 	}
 }
 
-// Wrap wraps a writer with prefix formatting for the given file path, delivery ID, and stream type
-func (f *Formatter) Wrap(w io.Writer, deliveryID, filePath, stream string) io.Writer {
+// Wrap wraps a writer with prefix formatting for the given file path, delivery ID, owner/repo, and stream type
+func (f *Formatter) Wrap(w io.Writer, deliveryID, owner, repo, filePath, stream string) io.Writer {
 	relPath, err := filepath.Rel(f.rootDir, filePath)
 	if err != nil {
 		relPath = filePath
 	}
 
 	return NewPrefixWriter(w, func() string {
-		return fmt.Sprintf("| %s %s %s (%s) > ",
+		return fmt.Sprintf("| %s %s %s/%s %s (%s) > ",
 			time.Now().Format(logDateFmt),
 			deliveryID,
+			owner,
+			repo,
 			relPath,
 			stream)
 	})

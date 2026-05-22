@@ -11,12 +11,15 @@ func TestFormatter(t *testing.T) {
 		var buf bytes.Buffer
 		formatter := NewFormatter("/tmp/hooks")
 
-		w := formatter.Wrap(&buf, "delivery-123", "/tmp/hooks/user/repo/script.sh", "stdout")
+		w := formatter.Wrap(&buf, "delivery-123", "testuser", "testrepo", "/tmp/hooks/user/repo/script.sh", "stdout")
 		w.Write([]byte("test output\n"))
 
 		output := buf.String()
 		if !strings.Contains(output, "delivery-123") {
 			t.Error("expected output to contain delivery ID")
+		}
+		if !strings.Contains(output, "testuser/testrepo") {
+			t.Error("expected output to contain owner/repo")
 		}
 		if !strings.Contains(output, "user/repo/script.sh") {
 			t.Error("expected output to contain relative path")
