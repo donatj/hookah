@@ -19,6 +19,7 @@ var (
 	serverRoot = flag.String("server-root", ".", "The root directory of the hook script hierarchy")
 	secret     = flag.String("secret", "", "GitHub HMAC secret key (required unless -no-secret)")
 	noSecret   = flag.Bool("no-secret", false, "Disable HMAC signature verification (insecure)")
+	noPrefix   = flag.Bool("no-prefix", false, "Disable log prefixes on hook script output")
 	timeout    = flag.Duration("timeout", 10*time.Minute, "Exec timeout on hook scripts")
 	verbose    = flag.Bool("v", false, "Enable verbose logger output")
 
@@ -52,6 +53,7 @@ func main() {
 	options := []server.ServerOption{
 		server.ServerExecTimeout(*timeout),
 		server.ServerErrorLog(logger),
+		server.ServerDisablePrefix(*noPrefix),
 	}
 
 	if *verbose {

@@ -29,6 +29,8 @@ type HookServer struct {
 	ErrorLog exec.Logger
 	InfoLog  exec.Logger
 
+	DisablePrefix bool
+
 	sync.Mutex
 }
 
@@ -62,14 +64,12 @@ func NewHookServer(rootDir string, options ...ServerOption) (*HookServer, error)
 		RootDir: absRootDir,
 	}
 
-	var errs []error
-
+	var errs error
 	for _, option := range options {
-		err := option(server)
-		errs = append(errs, err)
+		errs = errors.Join(errs, option(server))
 	}
 
-	return server, errors.Join(errs...)
+	return server, errs
 }
 
 // ServerExecTimeout configures the HookServer per-script execution timeout
@@ -92,6 +92,14 @@ func ServerErrorLog(log exec.Logger) ServerOption {
 func ServerInfoLog(log exec.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.InfoLog = log
+		return nil
+	}
+}
+
+// ServerDisablePrefix disables log prefixes on hook output
+func ServerDisablePrefix(disable bool) ServerOption {
+	return func(h *HookServer) error {
+		h.DisablePrefix = disable
 		return nil
 	}
 }
@@ -146,9 +154,10 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
-	hook := exec.NewHookExec(h.RootDir, buff,
-		exec.WithInfoLog(h.InfoLog),
-		exec.WithWriterFactory(func(stdout, stderr io.Writer, filePath string) (io.Writer, io.Writer) {
+	execOpts := []exec.HookExecOption{exec.WithInfoLog(h.InfoLog)}
+
+	if !h.DisablePrefix {
+		execOpts = append(execOpts, exec.WithWriterFactory(func(stdout, stderr io.Writer, filePath string) (io.Writer, io.Writer) {
 			relPath, err := filepath.Rel(h.RootDir, filePath)
 			if err != nil {
 				relPath = filePath
@@ -171,8 +180,10 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			wrappedStderr := logging.NewPrefixWriter(stderr, makePrefix("stderr"))
 
 			return wrappedStdout, wrappedStderr
-		}),
-	)
+		}))
+	}
+
+	hook := exec.NewHookExec(h.RootDir, buff, execOpts...)
 
 	go func() {
 		h.Lock()
