@@ -216,7 +216,7 @@ func pathScan(path string) ([]string, []string, error) {
 		// files = append(files, filepath.Join(path, fs.Name()))
 		// this should be picked up on a different sweep
 	} else {
-		return files, errHandlers, errors.New("bad file mumbo jumbo")
+		return files, errHandlers, fmt.Errorf("path %q is neither a directory nor an executable file", path)
 	}
 
 	return files, errHandlers, nil
