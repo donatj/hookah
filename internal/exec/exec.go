@@ -94,6 +94,23 @@ func NewHookExec(rootDir string, data io.ReadSeeker, opts ...HookExecOption) *Ho
 	return h
 }
 
+// validatePathComponent checks if a path component is safe from directory traversal.
+// Returns an error if the component is unsafe.
+func validatePathComponent(component, name string, allowEmpty bool) error {
+	if component == "" {
+		if allowEmpty {
+			return nil
+		}
+		return fmt.Errorf("%w: empty %s not allowed", ErrPathTraversal, name)
+	}
+	// Use filepath.Clean to normalize the path and detect traversal attempts
+	cleaned := filepath.Clean(component)
+	if cleaned != component || strings.Contains(cleaned, string(filepath.Separator)) || cleaned == "." || cleaned == ".." {
+		return fmt.Errorf("%w in %s: %q", ErrPathTraversal, name, component)
+	}
+	return nil
+}
+
 // GetPathExecs fetches the executable filenames for the given path.
 // Returns ErrPathTraversal if any component attempts directory traversal.
 func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []string, error) {
@@ -103,21 +120,13 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 		"repo":  repo,
 		"event": event,
 	} {
-		if component == "" {
-			return nil, nil, fmt.Errorf("%w: empty %s not allowed", ErrPathTraversal, name)
-		}
-		// Use filepath.Clean to normalize the path and detect traversal attempts
-		cleaned := filepath.Clean(component)
-		if cleaned != component || strings.Contains(cleaned, string(filepath.Separator)) || cleaned == "." || cleaned == ".." {
-			return nil, nil, fmt.Errorf("%w in %s: %q", ErrPathTraversal, name, component)
+		if err := validatePathComponent(component, name, false); err != nil {
+			return nil, nil, err
 		}
 	}
 	// Action is optional but must be validated if present
-	if action != "" {
-		cleaned := filepath.Clean(action)
-		if cleaned != action || strings.Contains(cleaned, string(filepath.Separator)) || cleaned == "." || cleaned == ".." {
-			return nil, nil, fmt.Errorf("%w in action: %q", ErrPathTraversal, action)
-		}
+	if err := validatePathComponent(action, "action", true); err != nil {
+		return nil, nil, err
 	}
 
 	outfiles := []string{}
