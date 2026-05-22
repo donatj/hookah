@@ -154,23 +154,21 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				relPath = filePath
 			}
 
-			wrappedStdout := logging.NewPrefixWriter(stdout, func() string {
-				return fmt.Sprintf("| %s %s %s/%s %s (stdout) > ",
-					time.Now().Format("2006/01/02 15:04:05"),
-					ghDelivery,
-					login,
-					repo,
-					relPath)
-			})
+			makePrefix := func(stream string) func() string {
+				return func() string {
+					return fmt.Sprintf("| %s %s %s/%s:%s %s (%s) > ",
+						time.Now().Format("2006/01/02 15:04:05"),
+						ghDelivery,
+						login,
+						repo,
+						ghEvent,
+						relPath,
+						stream)
+				}
+			}
 
-			wrappedStderr := logging.NewPrefixWriter(stderr, func() string {
-				return fmt.Sprintf("| %s %s %s/%s %s (stderr) > ",
-					time.Now().Format("2006/01/02 15:04:05"),
-					ghDelivery,
-					login,
-					repo,
-					relPath)
-			})
+			wrappedStdout := logging.NewPrefixWriter(stdout, makePrefix("stdout"))
+			wrappedStderr := logging.NewPrefixWriter(stderr, makePrefix("stderr"))
 
 			return wrappedStdout, wrappedStderr
 		}),
