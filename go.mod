@@ -2,8 +2,6 @@ module github.com/donatj/hookah/v3
 
 go 1.27
 
-toolchain go1.21.4
-
 require (
 	github.com/donatj/hmacsig v1.2.0
 	github.com/stretchr/testify v1.11.1
