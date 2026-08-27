@@ -1,6 +1,6 @@
 module github.com/donatj/hookah/v3
 
-go 1.21
+go 1.27
 
 toolchain go1.21.4
 
