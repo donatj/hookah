@@ -2,7 +2,7 @@ package hookah
 
 import (
 	"bytes"
-	"log"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
@@ -47,7 +47,7 @@ func TestOnlyExecutableBinsFound(t *testing.T) {
 		return
 	}
 
-	log.Printf("%#v", scripts)
+	slog.Debug("scripts", "scripts", scripts)
 
 	assert.EqualValues(t, expectedScripts, scripts)
 
@@ -98,7 +98,7 @@ func TestActionDirectoriesWorkAsExpected(t *testing.T) {
 		return
 	}
 
-	log.Printf("%#v", scripts)
+	slog.Debug("scripts", "scripts", scripts)
 
 	assert.EqualValues(t, expectedScripts, scripts)
 
