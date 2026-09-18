@@ -3,6 +3,7 @@ package hookah
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -158,23 +159,29 @@ func TestExecFileTimeout(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	_, _ = io.WriteString(f, "#!/bin/sh\nsleep 30\n")
+	_, err = io.WriteString(f, "#!/bin/sh\nsleep 30\n")
+	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	require.NoError(t, os.Chmod(f.Name(), 0700))
+	require.NoError(t, os.Chmod(f.Name(), 0755))
 
 	h := HookExec{
 		Stdout: io.Discard,
 		Stderr: io.Discard,
 	}
-	data := strings.NewReader(`{}`)
+	// Exceed the pipe buffer so the timeout must also unblock stdin writes.
+	data := strings.NewReader(strings.Repeat("x", 1024*1024))
 
-	start := time.Now()
-	err = h.execFile(f.Name(), data, 200*time.Millisecond)
-	elapsed := time.Since(start)
-
-	require.Error(t, err)
-	assert.Less(t, elapsed, 5*time.Second, "execFile should not hang after timeout")
-	assert.Contains(t, err.Error(), "timed out")
+	done := make(chan error, 1)
+	go func() { done <- h.execFile(f.Name(), data, 200*time.Millisecond) }()
+	select {
+	case err := <-done:
+		require.ErrorContains(t, err, "timed out")
+		var exitErr *exec.ExitError
+		require.ErrorAs(t, err, &exitErr)
+		assert.Contains(t, getErrorHandlerEnv(f.Name(), err), fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", exitErr.ExitCode()))
+	case <-time.After(5 * time.Second):
+		t.Fatal("execFile hung after timeout")
+	}
 }
 
 // TestExecFileCopyError verifies that a Read error during stdin copy still allows
@@ -184,9 +191,10 @@ func TestExecFileCopyError(t *testing.T) {
 	require.NoError(t, err)
 	defer os.Remove(f.Name())
 
-	_, _ = io.WriteString(f, "#!/bin/sh\ncat\n")
+	_, err = io.WriteString(f, "#!/bin/sh\ncat\n")
+	require.NoError(t, err)
 	require.NoError(t, f.Close())
-	require.NoError(t, os.Chmod(f.Name(), 0700))
+	require.NoError(t, os.Chmod(f.Name(), 0755))
 
 	h := HookExec{
 		Stdout: io.Discard,
@@ -203,7 +211,7 @@ func TestExecFileCopyError(t *testing.T) {
 
 	select {
 	case err := <-done:
-		assert.ErrorContains(t, err, readErr.Error())
+		assert.ErrorIs(t, err, readErr)
 	case <-time.After(3 * time.Second):
 		t.Fatal("execFile hung waiting for process to be reaped")
 	}
