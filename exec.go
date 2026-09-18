@@ -202,13 +202,12 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, f)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error {
-		// Kill the entire process group instead of just the parent
-		if cmd.Process == nil {
-			return os.ErrProcessDone
+	if timeout > 0 {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		cmd.Cancel = func() error {
+			// Kill the entire process group instead of just the parent.
+			return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		}
-		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 
 	if h.Stdout != nil {

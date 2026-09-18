@@ -247,3 +247,12 @@ func TestExecErrorHandlerExitStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestExecFileWithoutTimeout(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "hook")
+	require.NoError(t, os.WriteFile(path, []byte("#!/bin/sh\ncat\n"), 0755))
+	var out bytes.Buffer
+	h := HookExec{Stdout: &out, Stderr: io.Discard}
+	require.NoError(t, h.execFile(path, strings.NewReader("payload"), 0))
+	assert.Equal(t, "payload", out.String())
+}
