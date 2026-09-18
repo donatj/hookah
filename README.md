@@ -2,7 +2,6 @@
 
 [![Join the chat at https://gitter.im/hookah-server/Lobby](https://badges.gitter.im/hookah-server/Lobby.svg)](https://gitter.im/hookah-server/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/donatj/hookah/v3)](https://goreportcard.com/report/github.com/donatj/hookah/v3)
 [![GoDoc](https://godoc.org/github.com/donatj/hookah/v3?status.svg)](https://godoc.org/github.com/donatj/hookah/v3)
 [![CI](https://github.com/donatj/hookah/actions/workflows/ci.yml/badge.svg)](https://github.com/donatj/hookah/actions/workflows/ci.yml)
 

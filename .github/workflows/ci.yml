@@ -8,10 +8,10 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
     
       - name: Install Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
 
@@ -20,3 +20,5 @@ jobs:
 
       - name: Test
         run: go test ./...
+        env:
+          CGO_ENABLED: 0
