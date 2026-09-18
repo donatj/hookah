@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -215,3 +217,33 @@ type readErrSeeker struct {
 
 func (r *readErrSeeker) Seek(_ int64, _ int) (int64, error) { return 0, nil }
 func (r *readErrSeeker) Read(_ []byte) (int, error)         { return 0, r.readErr }
+
+// Exercise the real error-handler environment, including a joined copy/exit error.
+func TestExecErrorHandlerExitStatus(t *testing.T) {
+	for _, copyFailure := range []bool{false, true} {
+		name := "exit"
+		if copyFailure {
+			name = "copy-and-exit"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(root, "hook"), []byte("#!/bin/sh\ncat >/dev/null\nexit 42\n"), 0755))
+			require.NoError(t, os.WriteFile(filepath.Join(root, "@@error.handler"), []byte("#!/bin/sh\ncat >/dev/null\nprintf '%s' \"$HOOKAH_EXEC_EXIT_STATUS\"\n"), 0755))
+			var data io.ReadSeeker = strings.NewReader("payload")
+			readErr := errors.New("copy failed")
+			if copyFailure {
+				data = &readErrSeeker{readErr: readErr}
+			}
+			var out bytes.Buffer
+			h := HookExec{RootDir: root, Data: data, Stdout: &out, Stderr: io.Discard}
+			err := h.Exec("owner", "repo", "event", "", time.Second)
+			var exitErr *exec.ExitError
+			require.ErrorAs(t, err, &exitErr)
+			assert.Equal(t, 42, exitErr.ExitCode())
+			assert.Equal(t, "42", out.String())
+			if copyFailure {
+				assert.ErrorIs(t, err, readErr)
+			}
+		})
+	}
+}

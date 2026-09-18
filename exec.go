@@ -176,7 +176,8 @@ func getErrorHandlerEnv(f string, err error) []string {
 		"HOOKAH_EXEC_ERROR=" + err.Error(),
 	}
 
-	if exiterr, ok := err.(*exec.ExitError); ok {
+	var exiterr *exec.ExitError
+	if errors.As(err, &exiterr) {
 		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 			env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status.ExitStatus()))
 		}
@@ -246,7 +247,12 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 			waitErr = fmt.Errorf("hook timed out after %s: %w", timeout, waitErr)
 		}
 
-		err = errors.Join(err, waitErr)
+		switch {
+		case err == nil:
+			err = waitErr
+		case waitErr != nil:
+			err = errors.Join(err, waitErr)
+		}
 	}()
 
 	if _, err := io.Copy(stdin, data); err != nil {
