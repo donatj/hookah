@@ -176,8 +176,7 @@ func getErrorHandlerEnv(f string, err error) []string {
 		"HOOKAH_EXEC_ERROR=" + err.Error(),
 	}
 
-	var exiterr *exec.ExitError
-	if errors.As(err, &exiterr) {
+	if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
 		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 			env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status.ExitStatus()))
 		}
@@ -206,7 +205,13 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		cmd.Cancel = func() error {
 			// Kill the entire process group instead of just the parent.
-			return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			if errors.Is(err, syscall.ESRCH) {
+				// Preserve os/exec's successful-exit behavior when cancellation
+				// races with the process exiting.
+				return cmd.Process.Kill()
+			}
+			return err
 		}
 	}
 

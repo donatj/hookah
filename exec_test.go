@@ -187,14 +187,10 @@ func TestExecFileTimeout(t *testing.T) {
 // TestExecFileCopyError verifies that a Read error during stdin copy still allows
 // the child process to be reaped without the call hanging (no zombie processes).
 func TestExecFileCopyError(t *testing.T) {
-	f, err := os.CreateTemp("", "hookah-test-*.sh")
-	require.NoError(t, err)
-	defer os.Remove(f.Name())
-
-	_, err = io.WriteString(f, "#!/bin/sh\ncat\n")
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
-	require.NoError(t, os.Chmod(f.Name(), 0755))
+	root := t.TempDir()
+	completed := filepath.Join(root, "completed")
+	f := filepath.Join(root, "hook")
+	require.NoError(t, os.WriteFile(f, []byte("#!/bin/sh\ncat >/dev/null\nsleep 0.1\nprintf completed > \"$HOOK_COMPLETED_FILE\"\n"), 0755))
 
 	h := HookExec{
 		Stdout: io.Discard,
@@ -206,12 +202,15 @@ func TestExecFileCopyError(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- h.execFile(f.Name(), data, 5*time.Second)
+		done <- h.execFile(f, data, 5*time.Second, "HOOK_COMPLETED_FILE="+completed)
 	}()
 
 	select {
 	case err := <-done:
 		assert.ErrorIs(t, err, readErr)
+		contents, readCompletedErr := os.ReadFile(completed)
+		require.NoError(t, readCompletedErr, "execFile returned before the child completed")
+		assert.Equal(t, "completed", string(contents))
 	case <-time.After(3 * time.Second):
 		t.Fatal("execFile hung waiting for process to be reaped")
 	}
