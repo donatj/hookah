@@ -1,4 +1,4 @@
-package hookah
+package server
 
 import (
 	"bytes"
@@ -14,24 +14,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/donatj/hookah/v4/internal/exec"
+	"github.com/donatj/hookah/v4/internal/logging"
 )
 
 var ErrPathIsNotDir = errors.New("path is not a dir")
 var validGhEvent = regexp.MustCompile(`^[a-z\d_]{1,30}$`)
-
-// Logger handles Printf
-type Logger interface {
-	Printf(format string, v ...any)
-	Println(v ...any)
-}
 
 // HookServer implements net/http.Handler
 type HookServer struct {
 	RootDir string
 
 	Timeout  time.Duration
-	ErrorLog Logger
-	InfoLog  Logger
+	ErrorLog exec.Logger
+	InfoLog  exec.Logger
+
+	DisablePrefix bool
 
 	sync.Mutex
 }
@@ -66,14 +64,12 @@ func NewHookServer(rootDir string, options ...ServerOption) (*HookServer, error)
 		RootDir: absRootDir,
 	}
 
-	var errs []error
-
+	var errs error
 	for _, option := range options {
-		err := option(server)
-		errs = append(errs, err)
+		errs = errors.Join(errs, option(server))
 	}
 
-	return server, errors.Join(errs...)
+	return server, errs
 }
 
 // ServerExecTimeout configures the HookServer per-script execution timeout
@@ -85,7 +81,7 @@ func ServerExecTimeout(timeout time.Duration) ServerOption {
 }
 
 // ServerErrorLog configures the HookServer error logger
-func ServerErrorLog(log Logger) ServerOption {
+func ServerErrorLog(log exec.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.ErrorLog = log
 		return nil
@@ -93,9 +89,17 @@ func ServerErrorLog(log Logger) ServerOption {
 }
 
 // ServerInfoLog configures the HookServer info logger
-func ServerInfoLog(log Logger) ServerOption {
+func ServerInfoLog(log exec.Logger) ServerOption {
 	return func(h *HookServer) error {
 		h.InfoLog = log
+		return nil
+	}
+}
+
+// ServerDisablePrefix disables log prefixes on hook output
+func ServerDisablePrefix(disable bool) ServerOption {
+	return func(h *HookServer) error {
+		h.DisablePrefix = disable
 		return nil
 	}
 }
@@ -122,7 +126,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Println(ghDelivery, err)
+		log.Println(ghDelivery, "error reading request body:", err)
 		return
 	}
 	buff := bytes.NewReader(b)
@@ -133,7 +137,7 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = decoder.Decode(basicHook)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
-		log.Println(ghDelivery, err)
+		log.Println(ghDelivery, "error decoding body JSON:", err)
 		return
 	}
 
@@ -150,11 +154,40 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "%s/%s", login, repo)
 
-	hook := HookExec{
-		RootDir: h.RootDir,
-		Data:    buff,
-		InfoLog: h.InfoLog,
+	execOpts := []exec.HookExecOption{exec.WithInfoLog(h.InfoLog)}
+
+	if !h.DisablePrefix {
+		execOpts = append(execOpts, exec.WithWriterFactory(func(stdout, stderr io.Writer, filePath string) (io.Writer, io.Writer) {
+			relPath, err := filepath.Rel(h.RootDir, filePath)
+			if err != nil {
+				relPath = filePath
+			}
+
+			makePrefix := func(stream string) func() string {
+				return func() string {
+					return fmt.Sprintf("| %s %s %s/%s:%s %s (%s) > ",
+						time.Now().Format("2006/01/02 15:04:05"),
+						ghDelivery,
+						login,
+						repo,
+						ghEvent,
+						relPath,
+						stream)
+				}
+			}
+
+			wrappedStdout, wrappedStderr := logging.NewPrefixWriterPair(
+				stdout,
+				stderr,
+				makePrefix("stdout"),
+				makePrefix("stderr"),
+			)
+
+			return wrappedStdout, wrappedStderr
+		}))
 	}
+
+	hook := exec.NewHookExec(h.RootDir, buff, execOpts...)
 
 	go func() {
 		h.Lock()

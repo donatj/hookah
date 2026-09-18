@@ -10,13 +10,16 @@ import (
 	"time"
 
 	"github.com/donatj/hmacsig"
-	"github.com/donatj/hookah/v3"
+	"github.com/donatj/hookah/v4/internal/exec"
+	"github.com/donatj/hookah/v4/internal/server"
 )
 
 var (
 	httpPort   = flag.Uint("http-port", 8080, "HTTP port to listen on")
 	serverRoot = flag.String("server-root", ".", "The root directory of the hook script hierarchy")
-	secret     = flag.String("secret", "", "Optional GitHub HMAC secret key")
+	secret     = flag.String("secret", "", "GitHub HMAC secret key (required unless -no-secret)")
+	noSecret   = flag.Bool("no-secret", false, "Disable HMAC signature verification (insecure)")
+	noPrefix   = flag.Bool("no-prefix", false, "Disable log prefixes on hook script output")
 	timeout    = flag.Duration("timeout", 10*time.Minute, "Exec timeout on hook scripts")
 	verbose    = flag.Bool("v", false, "Enable verbose logger output")
 
@@ -28,20 +31,36 @@ var favicon []byte
 
 func init() {
 	flag.Parse()
+	if flag.NArg() != 0 {
+		log.Printf("unexpected non-flag arguments: %v", flag.Args())
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	// Require secret unless explicitly disabled
+	if *secret == "" && !*noSecret {
+		log.Fatal("error: -secret is required (or use -no-secret to disable signature verification)")
+	}
+
+	// Don't allow both secret and no-secret
+	if *secret != "" && *noSecret {
+		log.Fatal("error: cannot specify both -secret and -no-secret")
+	}
 }
 
 func main() {
 	logger := getLogger(*errlog)
-	options := []hookah.ServerOption{
-		hookah.ServerExecTimeout(*timeout),
-		hookah.ServerErrorLog(logger),
+	options := []server.ServerOption{
+		server.ServerExecTimeout(*timeout),
+		server.ServerErrorLog(logger),
+		server.ServerDisablePrefix(*noPrefix),
 	}
 
 	if *verbose {
-		options = append(options, hookah.ServerInfoLog(logger))
+		options = append(options, server.ServerInfoLog(logger))
 	}
 
-	hServe, err := hookah.NewHookServer(*serverRoot, options...)
+	hServe, err := server.NewHookServer(*serverRoot, options...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -49,6 +68,9 @@ func main() {
 	var serve http.Handler = hServe
 	if *secret != "" {
 		serve = hmacsig.Handler256(hServe, *secret)
+	} else {
+		logger.Println("WARNING: HMAC verification disabled - arbitrary requests can execute hooks and leak secrets")
+		logger.Println("WARNING: Do not expose this endpoint to public networks without -secret configured")
 	}
 
 	mux := http.NewServeMux()
@@ -65,9 +87,9 @@ func main() {
 	}
 }
 
-func getLogger(filename string) hookah.Logger {
+func getLogger(filename string) exec.Logger {
 	if filename != "" {
-		f, err := os.OpenFile(*errlog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -1,4 +1,4 @@
-package hookah
+package exec
 
 import (
 	"context"
@@ -6,13 +6,25 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
+	stdexec "os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 )
+
+// ErrPathTraversal is returned when a path component contains characters that could be used for directory traversal.
+// Can be checked with errors.Is().
+var ErrPathTraversal = errors.New("rejected path traversal attempt")
+
+// Logger handles Printf and Println
+type Logger interface {
+	Printf(format string, v ...any)
+	Println(v ...any)
+}
+
+// WriterFactory wraps stdout and stderr writers for a given file path
+type WriterFactory func(stdout, stderr io.Writer, filePath string) (wrappedStdout, wrappedStderr io.Writer)
 
 // HookExec represents a call to a hook
 type HookExec struct {
@@ -22,10 +34,95 @@ type HookExec struct {
 
 	Stdout io.Writer
 	Stderr io.Writer
+
+	// WriterFactory optionally creates custom writers for each executed file
+	WriterFactory WriterFactory
 }
 
-// GetPathExecs fetches the executable filenames for the given path
+// HookExecOption is a functional option for configuring HookExec
+type HookExecOption func(*HookExec)
+
+// WithInfoLog sets the info logger
+func WithInfoLog(logger Logger) HookExecOption {
+	return func(h *HookExec) {
+		h.InfoLog = logger
+	}
+}
+
+// WithStdout sets the stdout writer
+func WithStdout(w io.Writer) HookExecOption {
+	return func(h *HookExec) {
+		h.Stdout = w
+	}
+}
+
+// WithStderr sets the stderr writer
+func WithStderr(w io.Writer) HookExecOption {
+	return func(h *HookExec) {
+		h.Stderr = w
+	}
+}
+
+// WithWriterFactory sets a factory function that creates stdout and stderr writers for each executed file
+func WithWriterFactory(factory WriterFactory) HookExecOption {
+	return func(h *HookExec) {
+		h.WriterFactory = factory
+	}
+}
+
+// NewHookExec creates a new HookExec with the given required parameters and optional configuration.
+//
+// Example:
+//
+//	data := strings.NewReader(`{"event": "push"}`)
+//	hook := NewHookExec(
+//	    "/path/to/hooks",
+//	    data,
+//	    WithInfoLog(logger),
+//	    WithStdout(os.Stdout),
+//	    WithWriterFactory(myFactory),
+//	)
+func NewHookExec(rootDir string, data io.ReadSeeker, opts ...HookExecOption) *HookExec {
+	h := &HookExec{
+		RootDir: rootDir,
+		Data:    data,
+	}
+	for _, opt := range opts {
+		opt(h)
+	}
+	return h
+}
+
+// validatePathComponent checks if a path component is safe from directory traversal.
+// Returns an error if the component is empty or unsafe.
+func validatePathComponent(component, name string) error {
+	if component == "" {
+		return fmt.Errorf("%w: empty %s not allowed", ErrPathTraversal, name)
+	}
+	// Use filepath.Clean to normalize the path and detect traversal attempts
+	cleaned := filepath.Clean(component)
+	if cleaned != component || strings.Contains(cleaned, string(filepath.Separator)) || cleaned == "." || cleaned == ".." {
+		return fmt.Errorf("%w in %s: %q", ErrPathTraversal, name, component)
+	}
+	return nil
+}
+
+// GetPathExecs fetches the executable filenames for the given path.
+// Returns ErrPathTraversal if any component attempts directory traversal.
+//
+// action is optional - if empty, it will be omitted from the path resolution.
 func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []string, error) {
+	// Validate path components to prevent directory traversal attacks
+	for name, component := range map[string]string{
+		"owner": owner,
+		"repo":  repo,
+		"event": event,
+	} {
+		if err := validatePathComponent(component, name); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	outfiles := []string{}
 	outErrHandlers := []string{}
 
@@ -38,6 +135,11 @@ func (h *HookExec) GetPathExecs(owner, repo, event, action string) ([]string, []
 			{filepath.Join(h.RootDir, "@@", "@@"), event},
 		}
 	} else {
+		// Validate action component to prevent directory traversal attacks
+		if err := validatePathComponent(action, "action"); err != nil {
+			return nil, nil, err
+		}
+
 		pathSets = [][]string{
 			{h.RootDir, owner, repo, event, action},
 			{filepath.Join(h.RootDir, "@@"), repo, event, action},
@@ -81,10 +183,10 @@ func pathScan(path string) ([]string, []string, error) {
 
 	if fs.IsDir() {
 		d, err := os.Open(path)
-		defer d.Close()
 		if err != nil {
 			return files, errHandlers, err
 		}
+		defer d.Close()
 
 		fi, err := d.Readdir(-1)
 		if err != nil {
@@ -114,7 +216,7 @@ func pathScan(path string) ([]string, []string, error) {
 		// files = append(files, filepath.Join(path, fs.Name()))
 		// this should be picked up on a different sweep
 	} else {
-		return files, errHandlers, errors.New("bad file mumbo jumbo")
+		return files, errHandlers, fmt.Errorf("path %q is neither a directory nor an executable file", path)
 	}
 
 	return files, errHandlers, nil
@@ -176,10 +278,8 @@ func getErrorHandlerEnv(f string, err error) []string {
 		"HOOKAH_EXEC_ERROR=" + err.Error(),
 	}
 
-	if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
-		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-			env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status.ExitStatus()))
-		}
+	if status, ok := exitStatus(err); ok {
+		env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status))
 	}
 
 	return env
@@ -200,31 +300,26 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	}
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, f)
-	if timeout > 0 {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		cmd.Cancel = func() error {
-			// Kill the entire process group instead of just the parent.
-			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			if errors.Is(err, syscall.ESRCH) {
-				// Preserve os/exec's successful-exit behavior when cancellation
-				// races with the process exiting.
-				return cmd.Process.Kill()
-			}
-			return err
-		}
+	cmd := stdexec.CommandContext(ctx, f)
+	configureCommand(cmd, timeout > 0)
+
+	// Determine base writers
+	stdout := h.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
 	}
 
-	if h.Stdout != nil {
-		cmd.Stdout = h.Stdout
-	} else {
-		cmd.Stdout = os.Stdout
+	stderr := h.Stderr
+	if stderr == nil {
+		stderr = os.Stdout // uniformly dump logs to stdout by default
 	}
 
-	if h.Stderr != nil {
-		cmd.Stderr = h.Stderr
+	// Use WriterFactory to wrap them if provided
+	if h.WriterFactory != nil {
+		cmd.Stdout, cmd.Stderr = h.WriterFactory(stdout, stderr, f)
 	} else {
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = stdout
+		cmd.Stderr = stderr
 	}
 
 	cmd.Env = append(os.Environ(), env...)
@@ -268,43 +363,4 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	_ = stdin.Close()
 
 	return nil
-}
-
-// todo: base this on OS
-func isExecFile(fss ...string) (bool, error) {
-	if len(fss) > 10 {
-		paths := []string{}
-		for _, f := range fss {
-			paths = append(paths, f)
-		}
-
-		return false, fmt.Errorf("maximum symlink depth exceeded: %s", strings.Join(paths, " -> "))
-	}
-
-	if len(fss) == 0 {
-		return false, errors.New("no file info provided")
-	}
-
-	fs := fss[len(fss)-1]
-	fi, err := os.Stat(fs)
-	if err != nil {
-		return false, err
-	}
-
-	mode := fi.Mode()
-	if mode.IsRegular() && mode|0111 == mode {
-		return true, nil
-	}
-
-	if mode&os.ModeSymlink != 0 {
-		link, err := os.Readlink(fi.Name())
-		if err != nil {
-			return false, err
-		}
-
-		fss = append(fss, link)
-		return isExecFile(fss...)
-	}
-
-	return false, nil
 }
