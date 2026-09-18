@@ -14,7 +14,7 @@ It simply passes the message on to the STDIN of any script.
 
 ### From Source
 
-Building v3 requires Go 1.20+
+Building v3 requires Go 1.27+
 
 ```bash
 go install github.com/donatj/hookah/v3/cmd/hookah@latest
