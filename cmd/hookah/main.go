@@ -89,7 +89,7 @@ func main() {
 
 func getLogger(filename string) exec.Logger {
 	if filename != "" {
-		f, err := os.OpenFile(*errlog, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -176,8 +176,12 @@ func (h *HookServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			wrappedStdout := logging.NewPrefixWriter(stdout, makePrefix("stdout"))
-			wrappedStderr := logging.NewPrefixWriter(stderr, makePrefix("stderr"))
+			wrappedStdout, wrappedStderr := logging.NewPrefixWriterPair(
+				stdout,
+				stderr,
+				makePrefix("stdout"),
+				makePrefix("stderr"),
+			)
 
 			return wrappedStdout, wrappedStderr
 		}))

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -21,25 +22,24 @@ func isExecFile(fss ...string) (bool, error) {
 	}
 
 	fs := fss[len(fss)-1]
-	fi, err := os.Stat(fs)
+	fi, err := os.Lstat(fs)
 	if err != nil {
 		return false, err
 	}
 
 	mode := fi.Mode()
-	if mode.IsRegular() && mode&0o111 != 0 {
-		return true, nil
-	}
-
 	if mode&os.ModeSymlink != 0 {
-		link, err := os.Readlink(fi.Name())
+		link, err := os.Readlink(fs)
 		if err != nil {
 			return false, err
+		}
+		if !filepath.IsAbs(link) {
+			link = filepath.Join(filepath.Dir(fs), link)
 		}
 
 		fss = append(fss, link)
 		return isExecFile(fss...)
 	}
 
-	return false, nil
+	return mode.IsRegular() && mode&0o111 != 0, nil
 }

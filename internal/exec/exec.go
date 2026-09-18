@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
+	stdexec "os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -279,10 +278,8 @@ func getErrorHandlerEnv(f string, err error) []string {
 		"HOOKAH_EXEC_ERROR=" + err.Error(),
 	}
 
-	if exiterr, ok := errors.AsType[*exec.ExitError](err); ok {
-		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-			env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status.ExitStatus()))
-		}
+	if status, ok := exitStatus(err); ok {
+		env = append(env, fmt.Sprintf("HOOKAH_EXEC_EXIT_STATUS=%d", status))
 	}
 
 	return env
@@ -303,20 +300,8 @@ func (h *HookExec) execFile(f string, data io.ReadSeeker, timeout time.Duration,
 	}
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, f)
-	if timeout > 0 {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		cmd.Cancel = func() error {
-			// Kill the entire process group instead of just the parent.
-			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-			if errors.Is(err, syscall.ESRCH) {
-				// Preserve os/exec's successful-exit behavior when cancellation
-				// races with the process exiting.
-				return cmd.Process.Kill()
-			}
-			return err
-		}
-	}
+	cmd := stdexec.CommandContext(ctx, f)
+	configureCommand(cmd, timeout > 0)
 
 	// Determine base writers
 	stdout := h.Stdout

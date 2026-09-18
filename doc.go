@@ -1,4 +1,4 @@
-// Package hookah provides a GitHub webhook handler that executes scripts based on webhook events.
+// Package hookah documents the Hookah command-line server for executing scripts from GitHub webhook events.
 //
 // For command-line usage, see cmd/hookah.
 package hookah
